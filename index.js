@@ -1,5 +1,17 @@
+require("./config/config.js");
+
+const _ = require("lodash");
+const { ObjectID } = require("mongodb");
 const express = require("express");
+const bodyParser = require("body-parser");
+
+var { mongoose } = require("./db/mongoose.js");
+var { BuyOrder } = require("./models/buyorder.js");
+
 const app = express();
+const port = process.env.PORT;
+
+app.use(bodyParser.json());
 
 app.get("/express", (req, res) => {
   res.send({ message: "Welcome to eth-Wallet Express Server" });
@@ -20,5 +32,29 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT);
+app.post("/newbuyorder", (req, res) => {
+  var buyorder = new BuyOrder({
+    buyerAddress: req.body.buyerAddress,
+    tradeKey: null,
+    contractsAmount: req.body.contractsAmount,
+    dealPrice: req.body.dealPrice,
+    depositedEther: req.body.depositedEther
+  });
+
+  buyorder.save().then(
+    doc => {
+      console.log("Document: ", doc);
+      res.send(doc);
+    },
+    e => {
+      console.log("Error: ", e);
+      res.status(400).send(e); //refer to httpstatuses.com
+    }
+  );
+});
+
+app.listen(port, () => {
+  console.log("Started on port " + port);
+});
+
+module.exports = { app };

@@ -1,26 +1,30 @@
 {
-  "name": "eth-wallet",
+  "name": "crypto-futures",
   "version": "1.0.0",
-  "description": "Simple Ethereum Wallet",
+  "description": "Crypto-Futures",
   "main": "index.js",
   "engines": {
     "node": "9.4.0",
     "npm": "5.8.0"
   },
   "scripts": {
-    "test": "jest",
+    "test": "jest && export NODE_ENV=test",
     "start": "node index.js",
     "server": "nodemon index.js",
     "client": "npm run start --prefix client",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install --prefix client && npm run build --prefix client"
+    "heroku-postbuild":
+      "NPM_CONFIG_PRODUCTION=false npm install --prefix client && npm run build --prefix client"
   },
   "author": "Krishnan Lage Pontes",
   "license": "MIT",
   "dependencies": {
+    "body-parser": "^1.18.3",
     "concurrently": "^3.5.1",
     "express": "^4.16.3",
     "heroku-ssl-redirect": "0.0.4",
-    "lodash": "^4.17.5"
+    "lodash": "^4.17.5",
+    "mongodb": "^3.0.10",
+    "mongoose": "^5.1.4"
   }
 }

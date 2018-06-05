@@ -41,8 +41,10 @@ Alterar package.json no Client
 At the Client:
 npm install --save redux react-redux react-router-dom@4.2.2
 
-Other installed packages:
+Other installed packages on the Client:
 @axetroy/react-download crypto-js react-simple-file-input moment react-bootstrap
 validator heroku-ssl-redirect react-browser-detection axios react-number-format
+jest
 
-jest on the client
+On the Server:
+mongodb, mongoose, body-parser
