@@ -5,8 +5,12 @@ const { ObjectID } = require("mongodb");
 const express = require("express");
 const bodyParser = require("body-parser");
 
-var { mongoose } = require("./db/mongoose.js");
-var { BuyOrder } = require("./models/buyorder.js");
+const { mongoose } = require("./db/mongoose.js");
+const { BuyOrder } = require("./models/buyorder.js");
+const { SellOrder } = require("./models/sellorder.js");
+const { Trade } = require("./models/trade.js");
+const { Transaction } = require("./models/transaction.js");
+const TradeEngine = require("./trade-engine.js");
 
 const app = express();
 const port = process.env.PORT;
@@ -32,18 +36,27 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
+app.post("/tradeengine", async (req, res) => {
+  var tradeEngine = new TradeEngine(true);
+  try {
+    var result = await tradeEngine.matchOrders();
+    res.send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e);
+  }
+});
+
 app.post("/newbuyorder", (req, res) => {
   var buyorder = new BuyOrder({
     buyerAddress: req.body.buyerAddress,
     tradeKey: null,
     contractsAmount: req.body.contractsAmount,
-    dealPrice: req.body.dealPrice,
-    depositedEther: req.body.depositedEther
+    dealPrice: req.body.dealPrice
   });
 
   buyorder.save().then(
     doc => {
-      console.log("Document: ", doc);
       res.send(doc);
     },
     e => {
@@ -51,6 +64,72 @@ app.post("/newbuyorder", (req, res) => {
       res.status(400).send(e); //refer to httpstatuses.com
     }
   );
+});
+
+app.post("/newsellorder", (req, res) => {
+  var sellorder = new SellOrder({
+    sellerAddress: req.body.sellerAddress,
+    tradeKey: null,
+    contractsAmount: req.body.contractsAmount,
+    dealPrice: req.body.dealPrice
+  });
+
+  sellorder.save().then(
+    doc => {
+      res.send(doc);
+    },
+    e => {
+      console.log("Error: ", e);
+      res.status(400).send(e); //refer to httpstatuses.com
+    }
+  );
+});
+
+app.post("/trade", async (req, res) => {
+  var tradeId = new mongoose.Types.ObjectId();
+  try {
+    var buyOrder = await BuyOrder.findOne({
+      buyerAddress: "123456789012345678901234567890123456789012"
+    });
+    if (!buyOrder) {
+      return res.status(404).send();
+    }
+  } catch (e) {
+    res.status(400).send();
+  }
+  try {
+    var sellOrder = await SellOrder.findOne({
+      sellerAddress: "000006789012345678901234567890123456789012"
+    });
+    if (!sellOrder) {
+      return res.status(404).send();
+    }
+  } catch (e) {
+    res.status(400).send();
+  }
+  try {
+    var transaction = new Transaction({
+      buyOrderKey: buyOrder._id,
+      sellOrderKey: sellOrder._id,
+      tradeKey: tradeId
+    });
+
+    await transaction.save();
+
+    //create Trade after successfull insert transaction
+    var trade = new Trade({
+      sellerAddress: sellOrder.sellerAddress,
+      buyerAddress: buyOrder.buyerAddress,
+      contractAmount: req.body.contractsAmount,
+      dealPrice: req.body.dealPrice,
+      _id: tradeId
+    });
+    trade.save();
+
+    res.send({ transaction: transaction });
+  } catch (e) {
+    res.status(400).send(e);
+  }
 });
 
 app.listen(port, () => {

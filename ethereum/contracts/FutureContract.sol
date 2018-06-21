@@ -115,7 +115,6 @@ contract ETHK18 {
 
     }
 
-
     function createTrade(string key) public returns (bool) {
 
         bytes32 hashedKey = keccak256(bytes(key));
