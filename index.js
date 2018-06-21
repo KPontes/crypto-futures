@@ -36,10 +36,20 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-app.post("/tradeengine", async (req, res) => {
-  var tradeEngine = new TradeEngine(true);
+var tradeEngine = new TradeEngine(5000);
+app.post("/executetrade", async (req, res) => {
   try {
-    var result = await tradeEngine.matchOrders();
+    var result = await tradeEngine.executeTrade();
+    res.send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e);
+  }
+});
+
+app.post("/stoptrade", async (req, res) => {
+  try {
+    var result = await tradeEngine.stopTrade();
     res.send(result);
   } catch (e) {
     console.log("Error: ", e);
