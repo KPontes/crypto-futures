@@ -47,4 +47,4 @@ validator heroku-ssl-redirect react-browser-detection axios react-number-format
 jest
 
 On the Server:
-mongodb, mongoose, body-parser
+mongodb, mongoose, body-parser, interval-promise

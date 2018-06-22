@@ -1,5 +1,5 @@
 require("./config/config.js");
-
+const intervalObj = require("interval-promise");
 var { mongoose } = require("./db/mongoose.js");
 var { BuyOrder } = require("./models/buyorder.js");
 var { SellOrder } = require("./models/sellorder.js");
@@ -12,31 +12,37 @@ module.exports = TradeEngine;
 
 function TradeEngine(interval) {
   this.interval = interval;
-  this.intervalObject = {};
+  this.stopExecute = false;
 }
 
 TradeEngine.prototype.executeTrade = function() {
   var _this = this;
-  var count = 0;
-  //on the future, replace by interval-promise
-  try {
-    _this.intervalObject = setInterval(async function() {
-      var result = await _this.matchOrders();
-      if (result !== "OK") {
-        console.log("Err executeTrade", result);
-        clearInterval(_this.intervalObject);
-        console.log("executeTrade Stopped");
+
+  intervalObj(
+    async (iteration, stop) => {
+      try {
+        if (_this.stopExecute) {
+          console.log("Stop executeTrade loop");
+          stop();
+        }
+        var result = await _this.matchOrders();
+        if (result !== "OK") {
+          _this.stopExecute = true;
+          throw result;
+        }
+      } catch (err) {
+        console.log("Err executeTrade", err);
+        _this.stopExecute = true;
       }
-    }, _this.interval);
-  } catch (err) {
-    console.log("Err executeTrade", err);
-    clearInterval(_this.intervalObject);
-    console.log("executeTrade Stopped");
-  }
+    },
+    _this.interval,
+    (options = { stopOnError: true })
+  );
 };
 
 TradeEngine.prototype.stopTrade = function() {
-  clearInterval(this.intervalObject);
+  this.stopExecute = true;
+  // clearInterval(this.intervalObject);
   console.log("stopTrade");
 };
 
@@ -60,7 +66,7 @@ TradeEngine.prototype.matchOrders = async function() {
         );
       });
 
-      console.log("buyOrderMatches:", buyOrderMatches);
+      //console.log("buyOrderMatches:", buyOrderMatches);
       if (buyOrderMatches.length > 0) {
         var tradeId = new mongoose.Types.ObjectId();
         transaction = await this.createTransaction(
