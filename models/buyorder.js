@@ -31,6 +31,11 @@ var BuyOrderSchema = new mongoose.Schema(
       default: "open",
       required: true
     },
+    margin: {
+      type: Number,
+      default: 1,
+      required: true
+    },
     depositedEther: {
       type: Number,
       default: 0,

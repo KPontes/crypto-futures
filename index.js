@@ -11,6 +11,8 @@ const { SellOrder } = require("./models/sellorder.js");
 const { Trade } = require("./models/trade.js");
 const { Transaction } = require("./models/transaction.js");
 const TradeEngine = require("./trade-engine.js");
+const web3 = require("./ethereum/web3.js");
+const factory = require("./ethereum/factory.js");
 
 const app = express();
 const port = process.env.PORT;
@@ -35,6 +37,24 @@ if (process.env.NODE_ENV === "production") {
     res.sendFile(path.resolve(__dirname, "client", "build", "index.html"));
   });
 }
+
+app.post("/createcontract", async (req, res) => {
+  try {
+    const accounts = await web3.eth.getAccounts();
+    console.log("Account: ", accounts[0]);
+
+    const result = await factory.methods
+      .createFutureContract("ETHM18", 1, 15000000)
+      .send({
+        from: accounts[0],
+        gas: 1000000
+      });
+    console.log("Future Contract:", result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e);
+  }
+});
 
 var tradeEngine = new TradeEngine(5000);
 app.post("/executetrade", async (req, res) => {
