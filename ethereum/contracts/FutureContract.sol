@@ -9,6 +9,10 @@ contract FutureContractFactory {
         return newContract;
     }
 
+    function getContractsAmount() public view returns (uint) {
+        return deployedContracts.length;
+    }
+
     function getDeployedFutures() public view returns (address[]) {
         return deployedContracts;
     }
@@ -60,7 +64,7 @@ contract FutureContract {
 
     address public owner;
     uint contractSize; //in wei
-    uint endDate;
+    uint endDate; //in seconds from 01-01-1970
     string title;
 
     mapping(bytes32 => Trade) public tradesMap;
