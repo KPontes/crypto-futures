@@ -12,7 +12,9 @@ const { Trade } = require("./models/trade.js");
 const { Transaction } = require("./models/transaction.js");
 const { FutureContract } = require("./models/futurecontract.js");
 const TradeEngine = require("./trade-engine.js");
-const factory = require("./ethereum/create-future-contract.js");
+const factory = require("./controller/create-future-contract.js");
+const buyOrder = require("./controller/buyOrder.js");
+const sellOrder = require("./controller/sellOrder.js");
 //const web3 = require("./ethereum/web3.js");
 
 const app = express();
@@ -54,6 +56,50 @@ app.post("/createcontract", async (req, res) => {
   }
 });
 
+app.post("/savecontractdb", async (req, res) => {
+  try {
+    const result = await factory.saveContractDb(req.body.pk);
+    res.status(200).send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e); //refer to httpstatuses.com
+  }
+});
+
+app.post("/newbuyorder", async (req, res) => {
+  try {
+    const result = await buyOrder.create(
+      req.body.buyerAddress,
+      req.body.pk,
+      req.body.contractTitle,
+      req.body.contractsAmount,
+      1,
+      req.body.dealPrice
+    );
+    res.status(200).send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e); //refer to httpstatuses.com
+  }
+});
+
+app.post("/newsellorder", async (req, res) => {
+  try {
+    const result = await sellOrder.create(
+      req.body.sellerAddress,
+      req.body.pk,
+      req.body.contractTitle,
+      req.body.contractsAmount,
+      1,
+      req.body.dealPrice
+    );
+    res.status(200).send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e); //refer to httpstatuses.com
+  }
+});
+
 var tradeEngine = new TradeEngine(5000);
 app.post("/executetrade", async (req, res) => {
   try {
@@ -73,44 +119,6 @@ app.post("/stoptrade", async (req, res) => {
     console.log("Error: ", e);
     res.status(400).send(e);
   }
-});
-
-app.post("/newbuyorder", (req, res) => {
-  var buyorder = new BuyOrder({
-    buyerAddress: req.body.buyerAddress,
-    tradeKey: null,
-    contractsAmount: req.body.contractsAmount,
-    dealPrice: req.body.dealPrice
-  });
-
-  buyorder.save().then(
-    doc => {
-      res.send(doc);
-    },
-    e => {
-      console.log("Error: ", e);
-      res.status(400).send(e); //refer to httpstatuses.com
-    }
-  );
-});
-
-app.post("/newsellorder", (req, res) => {
-  var sellorder = new SellOrder({
-    sellerAddress: req.body.sellerAddress,
-    tradeKey: null,
-    contractsAmount: req.body.contractsAmount,
-    dealPrice: req.body.dealPrice
-  });
-
-  sellorder.save().then(
-    doc => {
-      res.send(doc);
-    },
-    e => {
-      console.log("Error: ", e);
-      res.status(400).send(e); //refer to httpstatuses.com
-    }
-  );
 });
 
 app.post("/trade", async (req, res) => {

@@ -1,4 +1,10 @@
-pragma solidity 0.4.24;
+pragma solidity ^0.4.20;
+
+//import "browser/StringUtils.sol" as strUtils;
+
+//ETHK18 contract size (0.1 eth) in Wei  100000000000000000
+//buy & sell orders: "111",1,1,770
+// Liquidation "111", 900, 855
 
 contract FutureContractFactory {
     address[] public deployedContracts;
@@ -17,13 +23,12 @@ contract FutureContractFactory {
         return deployedContracts;
     }
 
+    function testStuff (bytes32 v1) public pure returns (bytes32){
+        //bytes32 v2 = keccak256(bytes(v1));
+        return (v1);
+   }
+
 }
-
-//import "browser/StringUtils.sol" as strUtils;
-
-//ETHK18 contract size (0.1 eth) in Wei  100000000000000000
-//buy & sell orders: "111",1,1,770
-// Liquidation "111", 900, 855
 
 contract FutureContract {
 
@@ -45,6 +50,11 @@ contract FutureContract {
         uint dealPrice; //* 100
     }
 
+    struct OrderType {
+        bytes32 tradeKey;
+        uint buySell; //1: buy; 2: sell
+    }
+
     struct Trade {
         bytes32 key;
         address seller;
@@ -62,14 +72,15 @@ contract FutureContract {
         bool settled;
     }
 
-    address public owner;
-    uint contractSize; //in wei
-    uint endDate; //in seconds from 01-01-1970
-    string title;
+    address owner;
+    uint public endDate;
+    uint public contractSize; //in wei
+    string public title;
 
     mapping(bytes32 => Trade) public tradesMap;
     mapping(bytes32 => BuyOrder)  public buyOrdersMap;
     mapping(bytes32 => SellOrder)  public sellOrdersMap;
+    mapping(address => OrderType[])  public myOrdersMap; //brings all trades of an address
 
 
     modifier restricted() {
@@ -81,7 +92,7 @@ contract FutureContract {
         require(endDate <= now, "Wait for expiration date");
         _;
     }
-    //'ETHM18', 1, 15000000, '0x5fEDb99AAe7F1880A7a97b0cbe070231a6678f07'
+
     constructor(string _title, uint _contractSize, uint _endDate, address manager) public {
         require(address(msg.sender).balance == 0, "Used address attack");
         owner = manager;
@@ -95,12 +106,6 @@ contract FutureContract {
         return keccak256(bytes(key));
     }
 
-    function testStuff (uint deal, uint expiration) public pure returns (uint){
-        uint factor = 1000;
-        //return (factor * deal / expiration);
-        return (factor + factor - (factor * deal / expiration));
-   }
-
     function compareStrings (string str1, string str2) private pure returns (bool){
         bytes memory a = bytes(str1);
         bytes memory b = bytes(str2);
@@ -108,72 +113,79 @@ contract FutureContract {
    }
 
     function createBuyOrder(
-        string tradeKey,
+        bytes32 tradeKey,
         uint contractsAmount,
         uint margin,
         uint dealPrice
-        ) payable public isValid returns (bytes32) {
+        ) payable public returns (bytes32) {
 
         require(msg.value >  900000000000000 + contractsAmount * contractSize, "Insufficient deposit"); //Assure some gas amount
         require(msg.sender != owner, "Manager can not bid");
-        require (now > endDate, "End date expired");
-
-        bytes32 hashedKey = keccak256(bytes(tradeKey));
+        require (now < endDate, "End date expired");
 
         BuyOrder memory newBuyOrder = BuyOrder({
             buyer: msg.sender,
-            tradeKey: hashedKey,
+            tradeKey: tradeKey,
             contractsAmount: contractsAmount,
             dealPrice: dealPrice,
             margin: margin,
             depositedEther: msg.value
         });
-        buyOrdersMap[hashedKey] = newBuyOrder;
-        return hashedKey;
+        buyOrdersMap[tradeKey] = newBuyOrder;
+
+        OrderType memory orderType = OrderType({
+            tradeKey: tradeKey,
+            buySell: 1
+        });
+        myOrdersMap[msg.sender].push(orderType);
+        return tradeKey;
     }
 
     function createSellOrder(
-        string tradeKey,
+        bytes32 tradeKey,
         uint contractsAmount,
         uint margin,
         uint dealPrice
-        ) payable public isValid returns (bytes32) {
+        ) payable public returns (bytes32) {
 
         require(msg.value > 900000000000000 + contractsAmount * contractSize, "Insufficient deposit"); //Assure some gas amount
         require(msg.sender != owner, "Manager can not bid");
-        require (now > endDate, "End date expired");
-
-        bytes32 hashedKey = keccak256(bytes(tradeKey));
+        require (now < endDate, "End date expired");
 
         SellOrder memory newSellOrder = SellOrder({
             seller: msg.sender,
-            tradeKey: hashedKey,
+            tradeKey: tradeKey,
             dealPrice: dealPrice,
             contractsAmount: contractsAmount,
             margin: margin,
             depositedEther: msg.value
         });
-        sellOrdersMap[hashedKey] = newSellOrder;
-        return hashedKey;
+        sellOrdersMap[tradeKey] = newSellOrder;
+
+        OrderType memory orderType = OrderType({
+            tradeKey: tradeKey,
+            buySell: 2
+        });
+        myOrdersMap[msg.sender].push(orderType);
+        return tradeKey;
 
     }
 
 
-    function createTrade(string key) public returns (bool) {
+    function createTrade(bytes32 tradeKey) public returns (bool) {
 
-        bytes32 hashedKey = keccak256(bytes(key));
-        require(buyOrdersMap[hashedKey].tradeKey == hashedKey, "Must have a buy order created");
-        require(sellOrdersMap[hashedKey].tradeKey == hashedKey, "Must have a sell order created");
-        require(sellOrdersMap[hashedKey].dealPrice <= buyOrdersMap[hashedKey].dealPrice, "DealPrice does not match");
-        require(sellOrdersMap[hashedKey].seller != buyOrdersMap[hashedKey].buyer, "Buyer and seller must be different");
+        require(buyOrdersMap[tradeKey].tradeKey == tradeKey, "Must have a buy order created");
+        require(sellOrdersMap[tradeKey].tradeKey == tradeKey, "Must have a sell order created");
+        require(sellOrdersMap[tradeKey].dealPrice <= buyOrdersMap[tradeKey].dealPrice, "DealPrice does not match");
+        require(sellOrdersMap[tradeKey].seller != buyOrdersMap[tradeKey].buyer, "Buyer and seller must be different");
         require (now > endDate, "End date expired");
 
-        Trade memory newTrade = Trade({key: hashedKey,
-            seller: sellOrdersMap[hashedKey].seller,
-            buyer: buyOrdersMap[hashedKey].buyer,
-            contractsAmount: sellOrdersMap[hashedKey].contractsAmount + buyOrdersMap[hashedKey].contractsAmount,
-            etherAmount: sellOrdersMap[hashedKey].depositedEther + buyOrdersMap[hashedKey].depositedEther,
-            dealPrice: sellOrdersMap[hashedKey].dealPrice,
+        Trade memory newTrade = Trade({key: tradeKey,
+            seller: sellOrdersMap[tradeKey].seller,
+            buyer: buyOrdersMap[tradeKey].buyer,
+            contractsAmount: sellOrdersMap[tradeKey].contractsAmount + buyOrdersMap[tradeKey].contractsAmount,
+            etherAmount: sellOrdersMap[tradeKey].depositedEther + buyOrdersMap[tradeKey].depositedEther,
+            dealPrice: sellOrdersMap[tradeKey].dealPrice,
             exitPrice: 0,
             exitFactor: 0,
             sellerExitEtherAmount: 0,
@@ -184,13 +196,13 @@ contract FutureContract {
             settled: false
         });
 
-        tradesMap[hashedKey] = newTrade;
+        tradesMap[tradeKey] = newTrade;
         return true;
     }
 
-    function tradeWithdraw(string key, address requester) public returns (bool) {
-        bytes32 hashedKey = keccak256(bytes(key));
-        Trade storage trade = tradesMap[hashedKey];
+     function tradeWithdraw(bytes32 tradeKey, address requester) public returns (bool) {
+
+        Trade storage trade = tradesMap[tradeKey];
 
         require(trade.buyer == requester || trade.seller == requester, "Invalid requester or no trade created");
         require(trade.settled, "Settlement calculations not done yet");
@@ -225,10 +237,10 @@ contract FutureContract {
 
     }
 
-    function calculateLiquidation(string key, uint exitPrice, uint exitFactor) public restricted returns (bool) {
-        bytes32 hashedKey = keccak256(bytes(key));
-        Trade storage trade = tradesMap[hashedKey];
-        SellOrder storage sellOrder = sellOrdersMap[hashedKey];
+    function calculateLiquidation(bytes32 tradeKey, uint exitPrice, uint exitFactor) public restricted isValid returns (bool) {
+
+        Trade storage trade = tradesMap[tradeKey];
+        SellOrder storage sellOrder = sellOrdersMap[tradeKey];
 
         require(trade.contractsAmount > 0, "Invalid trade key");
         require(!trade.settled, "Settlement calculations already done");
@@ -244,6 +256,20 @@ contract FutureContract {
         return true;
 
     }
+
+    function getStorageVars() public view returns(uint, uint, string) {
+        return (endDate, contractSize, title);
+    }
+
+    function getOrdersLength(address requester) public view returns (uint) {
+        return myOrdersMap[requester].length;
+    }
+
+    function getOrder(address requester, uint index) public view returns(bytes32, uint) {
+        return (myOrdersMap[requester][index].tradeKey, myOrdersMap[requester][index].buySell);
+    }
+
+
 
     //Criar a função de calculo
     //Verificar que o withdraw atualizou o trade storage

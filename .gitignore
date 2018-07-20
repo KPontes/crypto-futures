@@ -11,6 +11,7 @@
 /build
 
 # misc
+/utils/secalc.js
 .DS_Store
 .env
 .env.local

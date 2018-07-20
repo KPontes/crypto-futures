@@ -14,11 +14,11 @@ var FutureContractSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
       maxlength: 6,
-      trim: true
+      trim: true,
+      unique: true
     },
     size: {
-      type: Number,
-      default: 1,
+      type: String,
       required: true
     },
     endDate: {

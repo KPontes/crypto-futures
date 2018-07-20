@@ -9,6 +9,11 @@
     "PORT": 5000,
     "MONGODB_URI": "mongodb://localhost:27017/FuturesDev",
     "JWT_SECRET": "myDevKey012",
-    "NETWORK": "rinkeby"
+    "NETWORK": "rinkeby",
+    "GASPRICE": "10000",
+    "DEFAULT_GAS": "3000000",
+    "RESERVE_GAS": "900000000000000",
+    "FACTORY_ADDRESS": "0x5A07532450cF071d6Ef041496083EdA0ab502316",
+    "NONCE": "185739"
   }
 }

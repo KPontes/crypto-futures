@@ -51,24 +51,25 @@ TradeEngine.prototype.matchOrders = async function() {
     var iSell = 0;
     var buyOrders = await this.getBuyOrders();
     var sellOrders = await this.getSellOrders();
-    let transaction, trade, updatedBuyOrder;
+    let transaction, trade, updatedBuyOrder, buyOrderMatches, tradeId;
 
     //console.log("sellOrders:", sellOrders);
 
-    //walk through sellOrders trying a match a buy order to create a trade
+    //walk through sellOrders trying to match a buy order to create a trade
     while (iSell < sellOrders.length) {
-      var buyOrderMatches = buyOrders.filter(function(bo) {
+      buyOrderMatches = await buyOrders.filter(function(bo) {
         return (
           bo.status === "open" &&
           bo.dealPrice >= sellOrders[iSell].dealPrice &&
+          bo.buyerAddress !== sellOrders[iSell].sellerAddress &&
           bo.contractsAmount - bo.contractsDealed >=
             sellOrders[iSell].contractsAmount
         );
       });
 
-      //console.log("buyOrderMatches:", buyOrderMatches);
+      console.log("buyOrderMatches:", buyOrderMatches);
       if (buyOrderMatches.length > 0) {
-        var tradeId = new mongoose.Types.ObjectId();
+        tradeId = new mongoose.Types.ObjectId();
         transaction = await this.createTransaction(
           buyOrderMatches,
           sellOrders[iSell],
@@ -116,11 +117,12 @@ TradeEngine.prototype.updateBuyOrder = async function(
     var bo = await BuyOrder.findOne({ _id: buyOrder._id }).exec();
     //one buy order may trade several sell orders
     if (bo.contractsDealed + sellOrder.contractsAmount >= bo.contractsAmount) {
-      bo.status = "closed";
-      buyOrder.status = "closed"; //this is to prevent reuse this order in the array
+      bo.status = "closed"; //this is for mongoDB
+      buyOrder.status = "closed"; //this is to prevent reuse this order in the memory array
     }
     bo.contractsDealed += sellOrder.contractsAmount;
     buyOrder.contractsDealed += sellOrder.contractsAmount; //updates in the array also
+    //tradeKey is an array with all tradeKeys related to this buyOrder
     bo.tradeKey === null
       ? (bo.tradeKey = [tradeId])
       : bo.tradeKey.push(tradeId);
@@ -164,8 +166,11 @@ TradeEngine.prototype.createTrade = function(
   if (buyOrderMatches.length == 0) {
     return false;
   }
-  //try save trade
   var buyOrder = buyOrderMatches[0];
+  if (buyOrder.buyerAddress === sellOrder.sellerAddress) {
+    return false;
+  }
+  //try save trade
   return new Promise(function(resolve, reject) {
     var trade = new Trade({
       sellerAddress: sellOrder.sellerAddress,
@@ -194,8 +199,11 @@ TradeEngine.prototype.createTransaction = function(
   if (buyOrderMatches.length == 0) {
     return false;
   }
-  //try save transaction
   var buyOrder = buyOrderMatches[0];
+  if (buyOrder.buyerAddress === sellOrder.sellerAddress) {
+    return false;
+  }
+  //try save transaction
   return new Promise(function(resolve, reject) {
     var transaction = new Transaction({
       buyOrderKey: buyOrder._id,
@@ -247,3 +255,14 @@ TradeEngine.prototype.getSellOrders = function() {
       });
   });
 };
+
+//Buy Order creation on the blockchain. TradeKey é um objId
+// contract = new w3Provided.eth.Contract(abi, futureContract.address);
+// var result = await contract.methods
+//   .createBuyOrder(web3.toHex(tradeKey), contractsAmount, margin, dealPrice)
+//   .send({
+//     from: w3Provided.eth.defaultAccount,
+//     gas: process.env.DEFAULT_GAS,
+//     gasPrice: process.env.GASPRICE,
+//     value: 1000
+//   });

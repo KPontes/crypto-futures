@@ -40,6 +40,10 @@ var SellOrderSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       required: true
+    },
+    sk: {
+      type: String,
+      default: ""
     }
   },
   {

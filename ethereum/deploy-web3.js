@@ -34,8 +34,4 @@ const deploy = async () => {
 };
 deploy();
 
-//0 Factory deployed to 0xAA14d66a51Be76feb2848d49662C5ed2ba012A6f
-//1 Factory deployed to 0x46FE7Ceb3e7210574388ca038e26374a3380d3D4
-
-//Futures[0] deployed to 0x98bbdc64e9f1810D6b99969E10B687049f9d9860
-//Futures[0] deployed to 0xdD63B0259E8134A4B6512af09b5327db8C9b2CAe
+//contract deployed to 0x5A07532450cF071d6Ef041496083EdA0ab502316

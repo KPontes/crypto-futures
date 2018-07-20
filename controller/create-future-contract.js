@@ -5,7 +5,8 @@ require("dotenv").config();
 
 require("../config/config.js");
 const { mongoose } = require("../db/mongoose.js");
-const compiledFactory = require("./build/FutureContractFactory.json");
+const compiledFactory = require("../ethereum/build/FutureContractFactory.json");
+const compiledFuture = require("../ethereum/build/FutureContract.json");
 const { FutureContract } = require("../models/futurecontract.js");
 
 module.exports = {
@@ -30,24 +31,59 @@ module.exports = {
           sizeWei,
           endDateSeconds
         );
-        var contractsAmount = await contract.getContractsAmount();
+        console.log("createFuture", result);
+        resolve("Future contract created");
+      } catch (e) {
+        console.log("createFuture Error: ", e);
+        reject(e);
+      }
+    });
+  },
+
+  saveContractDb: function(pk) {
+    return new Promise(async function(resolve, reject) {
+      try {
+        const abiFactory = JSON.parse(compiledFactory.interface);
+        var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
+        const factoryAddress = process.env.FACTORY_ADDRESS;
+        var wallet = new ethers.Wallet(pk, provider);
+        var factoryContract = new ethers.Contract(
+          factoryAddress,
+          abiFactory,
+          wallet
+        );
+
+        var contractsAmount = await factoryContract.getContractsAmount();
         var strAmount = contractsAmount.toString();
-        var deployedFutureContract = await contract.deployedContracts(
+        //Address of last deployed future contract
+        var futureContractAddress = await factoryContract.deployedContracts(
           parseInt(strAmount) - 1
-        ); //Address of last deployed future contract
-        console.log("deployedFutureContract: ", deployedFutureContract);
+        );
+
+        const abiFuture = JSON.parse(compiledFuture.interface);
+        var deployedFutureContract = new ethers.Contract(
+          futureContractAddress,
+          abiFuture,
+          wallet
+        );
+
+        let [
+          endDate,
+          contractSize,
+          title
+        ] = await deployedFutureContract.getStorageVars();
 
         var futureContract = new FutureContract({
-          address: deployedFutureContract,
+          address: futureContractAddress,
           title: title,
-          size: sizeWei,
-          endDate: endDateSeconds,
+          size: contractSize,
+          endDate: endDate,
           manager: wallet.address
         });
 
         futureContract.save().then(
           doc => {
-            console.log("Saved document: ", doc);
+            //console.log("Saved document: ", doc);
             resolve(doc);
           },
           e => {
@@ -56,7 +92,7 @@ module.exports = {
           }
         );
       } catch (e) {
-        console.log("createFuture Error: ", e);
+        console.log("saveContractDb Error: ", e);
         reject(e);
       }
     });

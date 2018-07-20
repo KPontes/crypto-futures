@@ -1,5 +1,5 @@
-// const HDWalletProvider = require("truffle-hdwallet-provider");
-// const Web3 = require("web3");
+//PREFER TO USE DEPLOY-WEB3
+
 const ethers = require("ethers");
 const compiledFactory = require("./build/FutureContract.json");
 //const { bytecode } = require("./build/bytecode.js");
