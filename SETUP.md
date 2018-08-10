@@ -48,7 +48,7 @@ jest ethers
 
 On the Server:
 mongodb, mongoose, body-parser, interval-promise, fs-extra, ethers, solc, truffle-hdwallet-provider,
-web3@1.0.0-beta.34 moment dotenv crypto-js
+web3@1.0.0-beta.34 moment dotenv crypto-js ethereumjs-tx
 
 Deployment
 compile manually to generate the build json files:

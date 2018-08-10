@@ -10,8 +10,9 @@ module.exports = {
       //we will create a provider to connect ro Rinkeby through Infura
       //const webSocketProvider = new Web3.providers.WebsocketProvider(
       const provider = new Web3.providers.HttpProvider(
-        "https://rinkeby.infura.io/JCk41EvcUW5XJTBeriv4"
+        "https://rinkeby.infura.io/v3/57d315a3ee704eeeb57cf05ff872a94a"
       );
+      // "https://rinkeby.infura.io/JCk41EvcUW5XJTBeriv4"
       return new Web3(provider);
     }
   }

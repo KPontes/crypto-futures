@@ -1,5 +1,12 @@
 const mongoose = require("mongoose");
 
+const OrderStates = Object.freeze({
+  dbOnly: "dbOnly",
+  open: "open",
+  closed: "closed",
+  deleted: "deleted"
+});
+
 var BuyOrderSchema = new mongoose.Schema(
   {
     buyerAddress: {
@@ -12,6 +19,13 @@ var BuyOrderSchema = new mongoose.Schema(
     tradeKey: {
       type: [mongoose.Schema.Types.ObjectId],
       default: []
+    },
+    contractAddress: {
+      type: String,
+      required: true,
+      minlength: 42,
+      maxlength: 42,
+      trim: true
     },
     contractsAmount: {
       type: Number,
@@ -28,7 +42,8 @@ var BuyOrderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      default: "open",
+      enum: Object.values(OrderStates),
+      default: OrderStates.dbOnly,
       required: true
     },
     margin: {
@@ -37,6 +52,11 @@ var BuyOrderSchema = new mongoose.Schema(
       required: true
     },
     depositedEther: {
+      type: Number,
+      default: 0,
+      required: true
+    },
+    fees: {
       type: Number,
       default: 0,
       required: true
@@ -50,6 +70,10 @@ var BuyOrderSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+Object.assign(BuyOrderSchema.statics, {
+  OrderStates
+});
 
 var BuyOrder = mongoose.model("BuyOrder", BuyOrderSchema);
 

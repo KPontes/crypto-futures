@@ -11,11 +11,11 @@ const { SellOrder } = require("./models/sellorder.js");
 const { Trade } = require("./models/trade.js");
 const { Transaction } = require("./models/transaction.js");
 const { FutureContract } = require("./models/futurecontract.js");
-const TradeEngine = require("./trade-engine.js");
+const TradeEngine = require("./controller/trade-engine.js");
 const factory = require("./controller/create-future-contract.js");
-const buyOrder = require("./controller/buyOrder.js");
-const sellOrder = require("./controller/sellOrder.js");
-//const web3 = require("./ethereum/web3.js");
+const ctrlBuyOrder = require("./controller/buyOrder.js");
+const ctrlSellOrder = require("./controller/sellOrder.js");
+const ctrlTest = require("./controller/testFunctions.js"); //const web3 = require("./ethereum/web3.js");
 
 const app = express();
 const port = process.env.PORT;
@@ -68,13 +68,14 @@ app.post("/savecontractdb", async (req, res) => {
 
 app.post("/newbuyorder", async (req, res) => {
   try {
-    const result = await buyOrder.create(
+    const result = await ctrlBuyOrder.createDb(
       req.body.buyerAddress,
       req.body.pk,
       req.body.contractTitle,
       req.body.contractsAmount,
       1,
-      req.body.dealPrice
+      req.body.dealPrice,
+      req.body.depositedEther
     );
     res.status(200).send(result);
   } catch (e) {
@@ -85,13 +86,28 @@ app.post("/newbuyorder", async (req, res) => {
 
 app.post("/newsellorder", async (req, res) => {
   try {
-    const result = await sellOrder.create(
+    const result = await ctrlSellOrder.createDb(
       req.body.sellerAddress,
       req.body.pk,
       req.body.contractTitle,
       req.body.contractsAmount,
       1,
-      req.body.dealPrice
+      req.body.dealPrice,
+      req.body.depositedEther
+    );
+    res.status(200).send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e); //refer to httpstatuses.com
+  }
+});
+
+app.post("/testfunction", async (req, res) => {
+  try {
+    const result = await ctrlTest.test(
+      req.body.contractTitle,
+      req.body.testStr,
+      req.body.depositedEther
     );
     res.status(200).send(result);
   } catch (e) {
@@ -103,7 +119,7 @@ app.post("/newsellorder", async (req, res) => {
 var tradeEngine = new TradeEngine(5000);
 app.post("/executetrade", async (req, res) => {
   try {
-    var result = await tradeEngine.executeTrade();
+    var result = await tradeEngine.executeTrade(req.body.contractTitle); //DEVE SER ITERADO NO BD
     res.send(result);
   } catch (e) {
     console.log("Error: ", e);
@@ -117,53 +133,6 @@ app.post("/stoptrade", async (req, res) => {
     res.send(result);
   } catch (e) {
     console.log("Error: ", e);
-    res.status(400).send(e);
-  }
-});
-
-app.post("/trade", async (req, res) => {
-  var tradeId = new mongoose.Types.ObjectId();
-  try {
-    var buyOrder = await BuyOrder.findOne({
-      buyerAddress: "123456789012345678901234567890123456789012"
-    });
-    if (!buyOrder) {
-      return res.status(404).send();
-    }
-  } catch (e) {
-    res.status(400).send();
-  }
-  try {
-    var sellOrder = await SellOrder.findOne({
-      sellerAddress: "000006789012345678901234567890123456789012"
-    });
-    if (!sellOrder) {
-      return res.status(404).send();
-    }
-  } catch (e) {
-    res.status(400).send();
-  }
-  try {
-    var transaction = new Transaction({
-      buyOrderKey: buyOrder._id,
-      sellOrderKey: sellOrder._id,
-      tradeKey: tradeId
-    });
-
-    await transaction.save();
-
-    //create Trade after successfull insert transaction
-    var trade = new Trade({
-      sellerAddress: sellOrder.sellerAddress,
-      buyerAddress: buyOrder.buyerAddress,
-      contractAmount: req.body.contractsAmount,
-      dealPrice: req.body.dealPrice,
-      _id: tradeId
-    });
-    trade.save();
-
-    res.send({ transaction: transaction });
-  } catch (e) {
     res.status(400).send(e);
   }
 });

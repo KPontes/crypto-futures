@@ -21,6 +21,13 @@ var TradeSchema = new mongoose.Schema(
       maxlength: 42,
       trim: true
     },
+    contractAddress: {
+      type: String,
+      required: true,
+      minlength: 42,
+      maxlength: 42,
+      trim: true
+    },
     contractsAmount: {
       type: Number,
       default: 1,

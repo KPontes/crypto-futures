@@ -1,5 +1,6 @@
 require("../config/config.js");
 const web3 = require("../ethereum/web3.js");
+const ethers = require("ethers");
 const cryptojs = require("../utils/cipher.js");
 const secalc = require("../utils/secalc.js");
 const { mongoose } = require("../db/mongoose.js");
@@ -7,57 +8,112 @@ const { SellOrder } = require("../models/sellorder.js");
 const { FutureContract } = require("../models/futurecontract.js");
 const compiledContract = require("../ethereum/build/FutureContract.json");
 
-module.exports = {
-  create: function(
-    sellerAddress,
-    pk,
-    contractTitle,
-    contractsAmount,
-    margin,
-    dealPrice
-  ) {
-    return new Promise(async function(resolve, reject) {
-      try {
-        const abi = JSON.parse(compiledContract.interface);
+var _this = this;
 
-        var futureContract = await FutureContract.findOne({
-          title: contractTitle
-        }).exec();
-        if (!futureContract) {
-          throw `SellOrder create Error: contract ${contractTitle} not found`;
-        }
+exports.createDb = function(
+  sellerAddress,
+  pk,
+  contractTitle,
+  contractsAmount,
+  margin,
+  dealPrice,
+  etherValue
+) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      const abi = JSON.parse(compiledContract.interface);
 
-        const w3Provided = web3.web3WithProvider();
-        const balance = await w3Provided.eth.getBalance(sellerAddress);
-        if (!balance > futureContract.size + process.env.RESERVE_GAS) {
-          throw "SellOrder create Error: Insufficient balance for contractSize + GAS";
-        }
-
-        var sellorder = new SellOrder({
-          sellerAddress: sellerAddress,
-          tradeKey: null,
-          contractsAmount: contractsAmount,
-          dealPrice: dealPrice,
-          sk: ""
-        });
-        var doc = await sellorder.save();
-
-        sellorder = await SellOrder.findOne({ _id: doc._id });
-
-        var pw = secalc.sec(
-          sellorder.sellerAddress,
-          sellorder.contractsAmount,
-          sellorder.dealPrice,
-          sellorder.createdAt
-        );
-        var cipherpk = cryptojs.encryptStr(pk, pw);
-        sellorder.sk = cipherpk;
-        doc = sellorder.save();
-        resolve(doc);
-      } catch (e) {
-        console.log("createSellOrder Error: ", e);
-        reject(e);
+      var futureContract = await FutureContract.findOne({
+        title: contractTitle
+      }).exec();
+      if (!futureContract) {
+        throw `SellOrder create Error: contract ${contractTitle} not found`;
       }
-    });
-  }
+
+      const w3Provided = web3.web3WithProvider();
+      const balance = await w3Provided.eth.getBalance(sellerAddress);
+      if (
+        !balance >
+        contractsAmount * futureContract.size + process.env.RESERVE_GAS
+      ) {
+        throw "BuyOrder create Error: Insufficient balance for contractSize + GAS";
+      }
+      var fee = calculateFee(etherValue);
+
+      var sellorder = new SellOrder({
+        sellerAddress: sellerAddress,
+        tradeKey: null,
+        contractsAmount: contractsAmount,
+        dealPrice: dealPrice,
+        depositedEther: parseFloat(etherValue),
+        fees: fee,
+        contractAddress: futureContract.address,
+        sk: ""
+      });
+      var doc = await sellorder.save();
+      //***código sk secalc (2)
+      console.log("sellorder", doc);
+      var transaction = await _this.createSellOrderBlockchainEthers(
+        doc,
+        pk,
+        futureContract.address
+      );
+      resolve(transaction);
+    } catch (e) {
+      console.log("createSellOrder Error: ", e);
+      reject(e);
+    }
+  });
+};
+
+exports.createSellOrderBlockchainEthers = function(
+  sellorder,
+  pk,
+  contractAddress
+) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      //contract 0x44EeC9a449C28EC8EBBBd483A39FbE6156702E7E
+
+      //***código sk secalc (1)
+      var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
+      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
+      const abi = JSON.parse(compiledContract.interface);
+      var wallet = new ethers.Wallet(sk, provider);
+      var contract = new ethers.Contract(contractAddress, abi, wallet);
+      var wei = ethers.utils.parseEther(sellorder.depositedEther.toString());
+      var weiBN = ethers.utils.bigNumberify(wei);
+      var options = {
+        value: weiBN
+      };
+
+      var transaction = await contract.createSellOrder(
+        sellorder._id.toString(),
+        sellorder.contractsAmount,
+        sellorder.margin,
+        sellorder.dealPrice,
+        options
+      );
+      console.log("transaction: ", transaction);
+      var transaction = await provider.waitForTransaction(transaction.hash);
+      console.log("Transaction Mined: " + transaction);
+      var transactionReceipt = await provider.getTransactionReceipt(
+        transaction.hash
+      );
+      console.log("transactionReceipt", transactionReceipt);
+      if (transactionReceipt.status === 1) {
+        sellorder.status = SellOrder.OrderStates.open;
+        var updatedBO = await sellorder.save();
+        console.log("updatedBO", updatedBO);
+      }
+      resolve(transactionReceipt);
+    } catch (e) {
+      console.log("createBuyOrder Error: ", e);
+      reject(e);
+    }
+  });
+};
+
+var calculateFee = function(etherValue) {
+  return parseFloat(etherValue) * 0.001 + 0.0009; //minus commision and GAS
 };

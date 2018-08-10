@@ -1,7 +1,7 @@
 //PREFER TO USE DEPLOY-WEB3
 
 const ethers = require("ethers");
-const compiledFactory = require("./build/FutureContract.json");
+const compiledFactory = require("./build/FutureContractFactory.json");
 //const { bytecode } = require("./build/bytecode.js");
 
 let NETWORK;
@@ -30,6 +30,7 @@ const deploy = function() {
   // Create a wallet to deploy the contract
   var pk = "0x797336cf22a6171b4cb179d6a9c08e5848cbd1748563bc44ea66c506fb0aef8c"; // Only on test network
   var wallet = new ethers.Wallet(pk, provider);
+  console.log("wallet: ", wallet);
 
   // Send the transaction
   var sendPromise = wallet.sendTransaction(deployTransaction);

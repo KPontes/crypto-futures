@@ -23,9 +23,11 @@ const deploy = async () => {
     JSON.parse(compiledContract.interface)
   )
     .deploy({
-      data: "0x" + compiledContract.bytecode
+      data: "0x" + compiledContract.bytecode,
+      arguments: ["Teste"]
     })
     .send({
+      nonce: "10001",
       gas: "7000000",
       from: accounts[0]
     });
@@ -34,4 +36,33 @@ const deploy = async () => {
 };
 deploy();
 
-//contract deployed to 0x5A07532450cF071d6Ef041496083EdA0ab502316
+// new web3.eth.Contract(JSON.parse(compiledContract.interface))
+//   .deploy({
+//     data: "0x" + compiledContract.bytecode,
+//     arguments: ["Teste"]
+//   })
+//   .send({
+//     nonce: "0x122",
+//     gasLimit: "700000",
+//     gasPrice: 30000,
+//     from: accounts[0]
+//   })
+//   .once("transactionHash", function(txHash) {
+//     console.log("transactionHash", txHash);
+//   })
+//   .once("confirmation", function(confirmationNumber, receipt) {
+//     console.log("confirmation", confirmationNumber, receipt);
+//   })
+//   .once("receipt", function(receipt) {
+//     console.log("receipt", receipt);
+//   })
+//   .once("error", function(error) {
+//     console.log("error", error);
+//   });
+
+//Factoey1 deployed to 0x5A07532450cF071d6Ef041496083EdA0ab502316
+//Factoey2 deployed to 0xfB477967C1e9E73E712398eDcAa20D7673D545B8
+//Factory3 deployed to 0x2a19ABd75ef0001594eEF1be298585beFEd6E326
+//Factory4 deployed to 0x51e423Bc5D86D54e48339210c3614069Ab9Df08d
+//Factory5 deployed to 0x5fC5DCE68241548940bA37dDd8A27d2e8520CbeA
+//Factory6 deployed to 0x8EC97F98b88d67f91bF8713DB9D3C96B0Dd9F911
