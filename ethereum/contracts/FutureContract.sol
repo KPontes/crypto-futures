@@ -1,174 +1,140 @@
 pragma solidity 0.4.24;
 
-//import "browser/StringUtils.sol" as strUtils;
+import "./IFutureStorage.sol";
 
-//ETHK18  contract size (0.1 eth) in Wei  100000000000000000 , enDate 1535587200
-//buy & sell orders: "111",1,1,770
-// Liquidation "111", 900, 855
+//"ETHK18", "100000000000000000", "1535587200",  "0xca35b7d915458ef540ade6068dfe2f44e8fa733c", "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a"
+contract FutureContract  {
 
-contract FutureContractFactory {
-    address[] public deployedContracts;
+    IFutureStorage  FS;
 
-    function createFutureContract(string _title, uint _contractSize, uint _endDate) public returns (FutureContract) {
-        FutureContract newContract = new FutureContract(_title, _contractSize, _endDate, msg.sender);
-        deployedContracts.push(newContract);
-        return newContract;
+    struct ContractParams {
+        address owner;
+        uint endDate;
+        uint contractSize; //in wei
+        string title;
     }
 
-    function getContractsAmount() public view returns (uint) {
-        return deployedContracts.length;
-    }
-
-}
-
-contract FutureContract {
-    uint constant gasReserve = 900000000000000;
-
-    struct BuyOrder {
-        address buyer;
-        bytes32 key;
-        uint contractsAmount;
-        uint depositedEther; //wei
-        uint margin;
-        uint dealPrice; //* 100
-        uint fees; //wei
-    }
-
-    struct SellOrder {
-        address seller;
-        bytes32 key;
-        uint contractsAmount;
-        uint depositedEther; //wei
-        uint margin;
-        uint dealPrice; //* 100
-        uint fees; //wei
-    }
-
-    address public owner;
-    uint public endDate;
-    uint public contractSize; //in wei
-    string public title;
-
+    ContractParams public contractParams;
     mapping(address => uint) public balance;
-    // mapping(bytes32 => Trade) public tradesMap;
-    mapping(bytes32 => SellOrder)  public sellOrdersMap;
-    mapping(bytes32 => BuyOrder)  public buyOrdersMap;
 
     modifier restricted() {
-        require(msg.sender == owner, "Only allowed to manager");
+        require(msg.sender == contractParams.owner, "Only allowed to manager");
         _;
     }
 
-    modifier isValid() {
-        require(endDate <= now, "Wait for expiration date");
-        _;
-    }
+    // modifier isValid() {
+    //     require(contractParams.endDate <= now, "Wait for expiration date");
+    //     _;
+    // }
 
-    constructor(string _title, uint _contractSize, uint _endDate, address manager) public {
+    constructor(string _title, uint _contractSize, uint _endDate, address manager, address _FS) public {
         //require(address(this).balance == 0, "Used address attack");
-        owner = manager;
-        contractSize = _contractSize;
-        endDate = _endDate;
-        title = _title;
+        contractParams.owner = manager;
+        contractParams.contractSize = _contractSize;
+        contractParams.endDate = _endDate;
+        contractParams.title = _title;
+        FS = IFutureStorage(_FS);
     }
 
-    function createBuyOrder(
+    /* function createBuyOrder(
         string key,
         uint contractsAmount,
         uint margin,
         uint dealPrice
         ) payable public {
 
-        require(msg.value >= contractsAmount * contractSize, "Insufficient deposit");
-        require(msg.sender != owner, "Manager can not bid");
-        require (now < endDate, "End date expired");
+        validateOrder(msg.sender, msg.value, contractsAmount);
+
+        // require(msg.value >= contractsAmount * contractParams.contractSize, "Insufficient deposit");
+        // require(msg.sender != contractParams.owner, "Manager can not bid");
+        // require (now < contractParams.endDate, "End date expired");
 
         bytes32 keyByte = keccak256(bytes(key));
         uint fees = calculateFee(msg.value);
-        createBuyOrder(keyByte, contractsAmount, margin, dealPrice, msg.value, fees);
-    }
+        FS.createBuyOrder(msg.sender, keyByte, contractsAmount, margin, dealPrice, msg.value, fees);
+        balance[contractParams.owner] += fees;
+    } */
 
-    function createBuyOrder(
-        bytes32 key,
-        uint contractsAmount,
-        uint margin,
-        uint dealPrice,
-        uint depositedEther,
-        uint fees
-        ) private {
+    /* function getBuyOrder(string key) public view returns(address, uint, uint, uint, uint) {
+        return FS.getBuyOrder(key);
+    } */
 
-        BuyOrder memory newBuyOrder = BuyOrder({
-            buyer: msg.sender,
-            key: key,
-            contractsAmount: contractsAmount,
-            dealPrice: dealPrice,
-            margin: margin,
-            depositedEther: depositedEther,
-            fees: fees
-        });
-        buyOrdersMap[key] = newBuyOrder;
-        balance[owner] += fees;
-    }
-
-    function getBuyOrder(string key) public view returns(address, uint, uint, uint, uint) {
-        bytes32 keyByte = keccak256(bytes(key));
-        return (buyOrdersMap[keyByte].buyer, buyOrdersMap[keyByte].contractsAmount, buyOrdersMap[keyByte].depositedEther, buyOrdersMap[keyByte].fees, buyOrdersMap[keyByte].dealPrice);
-
-    }
-
-    function createSellOrder(
+    function createOrder(
+        uint8 orderType,
         string key,
         uint contractsAmount,
         uint margin,
         uint dealPrice
         ) payable public {
 
-        require(msg.value >= contractsAmount * contractSize, "Insufficient deposit");
-        require(msg.sender != owner, "Manager can not bid");
-        require (now < endDate, "End date expired");
+        validateOrder(msg.sender, msg.value, contractsAmount);
 
         bytes32 keyByte = keccak256(bytes(key));
         uint fees = calculateFee(msg.value);
-        createSellOrder(keyByte, contractsAmount, margin, dealPrice, msg.value, fees);
+        FS.createOrder(msg.sender, orderType, keyByte, contractsAmount, margin, dealPrice, msg.value, fees);
+
+        balance[contractParams.owner] += fees;
     }
 
-    function createSellOrder(
-        bytes32 key,
-        uint contractsAmount,
-        uint margin,
-        uint dealPrice,
-        uint depositedEther,
-        uint fees
-        ) private {
-
-        SellOrder memory newSellOrder = SellOrder({
-            seller: msg.sender,
-            key: key,
-            contractsAmount: contractsAmount,
-            dealPrice: dealPrice,
-            margin: margin,
-            depositedEther: depositedEther,
-            fees: fees
-        });
-        sellOrdersMap[key] = newSellOrder;
-        balance[owner] += fees;
+    function getOrder(uint8 orderType, string key) public view returns(address, uint, uint, uint, uint) {
+        return FS.getOrder(orderType, key);
     }
 
-    function getSellOrder(string key) public view returns(address, uint, uint, uint, uint) {
-        bytes32 keyByte = keccak256(bytes(key));
-        return (sellOrdersMap[keyByte].seller, sellOrdersMap[keyByte].contractsAmount, sellOrdersMap[keyByte].depositedEther, sellOrdersMap[keyByte].fees, sellOrdersMap[keyByte].dealPrice);
+    function validateOrder(address sender, uint value, uint contractsAmount) private view {
+        if ((value < contractsAmount * contractParams.contractSize) ||
+            (sender == contractParams.owner) ||
+            (now > contractParams.endDate)) {
+            revert(); //invalid order
+        }
+    }
+
+    function createTrade(string tradeKey, string buyOrderKey, string sellOrderKey) restricted public  {
+
+      //require (now <= contractParams.endDate, "End date expired");
+      if (now > contractParams.endDate) {
+            revert(); //End date expired
+        }
+
+      bytes32 tradeByte = keccak256(bytes(tradeKey));
+      bytes32 buyByte = keccak256(bytes(buyOrderKey));
+      bytes32 sellByte = keccak256(bytes(sellOrderKey));
+      FS.createTrade(tradeByte, buyByte, sellByte);
+    }
+
+    function getTrade(string key) public view returns(uint, uint, uint, uint) {
+        return FS.getTrade(key);
+    }
+
+    function calculateLiquidation(string tradeKey, uint exitFactor, uint exitPrice) public restricted  {
+        //uncomment for PRD
+        //require(contractParams.endDate <= now, "Wait for expiration date");
+        bytes32 keyByte = keccak256(bytes(tradeKey));
+        FS.calculateLiquidation(keyByte, exitFactor, exitPrice);
+    }
+
+    function tradeWithdraw(string tradeKey) public {
+        bytes32 keyByte = keccak256(bytes(tradeKey));
+        bool isBuyer;
+        uint exitEtherAmount;
+        (isBuyer, exitEtherAmount) = FS.tradeWithdraw(keyByte, msg.sender);
+        //there is still wei to withdraw
+        if (exitEtherAmount > 1) {
+            FS.setTradeWithdraw(keyByte, isBuyer, 0);
+            if(!msg.sender.send(exitEtherAmount)) {
+                //on failure, return allowance to future withdraw
+                FS.setTradeWithdraw(keyByte, isBuyer, exitEtherAmount);
+            }
+        }
 
     }
 
-    function getStorageVars() public view returns(uint, uint, string) {
-        return (endDate, contractSize, title);
+    function getStorageVars() public view returns(uint, uint, string, address) {
+        return (contractParams.endDate, contractParams.contractSize, contractParams.title, contractParams.owner);
     }
 
     function calculateFee(uint etherValue) private pure returns(uint) {
-        return (etherValue/1000) + gasReserve;
+        return (etherValue/1000);
     }
-
-
 
     //Criar a função de calculo
     //Verificar que o withdraw atualizou o trade storage

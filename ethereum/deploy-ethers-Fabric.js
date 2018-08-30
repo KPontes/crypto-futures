@@ -1,19 +1,9 @@
-//PREFER TO USE DEPLOY-WEB3
-
+require("../config/config.js");
 const ethers = require("ethers");
 const compiledFactory = require("./build/FutureContractFactory.json");
-//const { bytecode } = require("./build/bytecode.js");
-
-let NETWORK;
-if (process.env.NODE_ENV === "production") {
-  NETWORK = "homestead";
-} else {
-  NETWORK = "rinkeby";
-}
-
+const NETWORK = process.env.NETWORK;
 const bytecode = compiledFactory.bytecode;
 console.log("BYTECODE: ", bytecode);
-
 const abi = JSON.parse(compiledFactory.interface);
 console.log("INTERFACE: ", abi);
 
@@ -28,7 +18,7 @@ const deploy = function() {
   var provider = ethers.providers.getDefaultProvider(NETWORK);
 
   // Create a wallet to deploy the contract
-  var pk = "0x797336cf22a6171b4cb179d6a9c08e5848cbd1748563bc44ea66c506fb0aef8c"; // Only on test network
+  var pk = "0x54ebbbba420fa577d9a7be4e831d3ea540bcd9e455d83ade27956b52f28f1f52"; // Only on test network
   var wallet = new ethers.Wallet(pk, provider);
   console.log("wallet: ", wallet);
 
@@ -42,3 +32,6 @@ const deploy = function() {
 };
 
 deploy();
+
+// 0x106929531Cf3cA06f83a81f5d72504d72b360205 current in test
+// 0x0F472A261e80D161AB1874bc9535d7749613D7e9 last working factory

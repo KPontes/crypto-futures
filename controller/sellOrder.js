@@ -73,8 +73,6 @@ exports.createSellOrderBlockchainEthers = function(
 ) {
   return new Promise(async function(resolve, reject) {
     try {
-      //contract 0x44EeC9a449C28EC8EBBBd483A39FbE6156702E7E
-
       //***código sk secalc (1)
       var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
       var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
@@ -87,33 +85,68 @@ exports.createSellOrderBlockchainEthers = function(
         value: weiBN
       };
 
-      var transaction = await contract.createSellOrder(
+      var transaction = await contract.createOrder(
+        2,
         sellorder._id.toString(),
         sellorder.contractsAmount,
         sellorder.margin,
-        sellorder.dealPrice,
+        (sellorder.dealPrice * 100).toFixed(0),
         options
       );
-      console.log("transaction: ", transaction);
+      console.log("createSellOrder transaction: ", transaction);
       var transaction = await provider.waitForTransaction(transaction.hash);
-      console.log("Transaction Mined: " + transaction);
       var transactionReceipt = await provider.getTransactionReceipt(
         transaction.hash
       );
-      console.log("transactionReceipt", transactionReceipt);
+      console.log("createSellOrder transactionReceipt", transactionReceipt);
       if (transactionReceipt.status === 1) {
         sellorder.status = SellOrder.OrderStates.open;
         var updatedBO = await sellorder.save();
-        console.log("updatedBO", updatedBO);
       }
       resolve(transactionReceipt);
     } catch (e) {
-      console.log("createBuyOrder Error: ", e);
+      console.log("createSellOrder Error: ", e);
+      reject(e);
+    }
+  });
+};
+
+exports.getSellOrderEthers = function(key, contractTitle, pk) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      var futureContract = await FutureContract.findOne({
+        title: contractTitle
+      }).exec();
+      if (!futureContract) {
+        throw `getSellOrderEthers Error: contract ${contractTitle} not found`;
+      }
+      var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
+      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
+      const abi = JSON.parse(compiledContract.interface);
+      var wallet = new ethers.Wallet(sk, provider);
+      var contract = new ethers.Contract(futureContract.address, abi, wallet);
+      var so = {};
+      let [
+        seller,
+        contractsAmount,
+        depositedEther,
+        fees,
+        dealPrice
+      ] = await contract.getOrder(2, key);
+      so.seller = seller;
+      so.contractsAmount = contractsAmount.toString(10);
+      so.depositedEther = depositedEther.toString(10);
+      so.fees = fees.toString(10);
+      so.dealPrice = dealPrice.toString(10);
+      console.log("getSellOrder transaction: ", so);
+      resolve(so);
+    } catch (e) {
+      console.log("getSellOrder Error: ", e);
       reject(e);
     }
   });
 };
 
 var calculateFee = function(etherValue) {
-  return parseFloat(etherValue) * 0.001 + 0.0009; //minus commision and GAS
+  return parseFloat(etherValue) / 1000; //minus commision
 };

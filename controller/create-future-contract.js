@@ -1,14 +1,12 @@
 const { ObjectID } = require("mongodb");
 const ethers = require("ethers");
-const Web3 = require("web3"); //just for utils
 const moment = require("moment");
-require("dotenv").config();
-
 require("../config/config.js");
 const { mongoose } = require("../db/mongoose.js");
 const compiledFactory = require("../ethereum/build/FutureContractFactory.json");
 const compiledFuture = require("../ethereum/build/FutureContract.json");
 const { FutureContract } = require("../models/futurecontract.js");
+//require("dotenv").config();
 
 module.exports = {
   //pk from the contract creator account
@@ -18,6 +16,7 @@ module.exports = {
         const abi = JSON.parse(compiledFactory.interface);
         var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
         const factoryAddress = process.env.FACTORY_ADDRESS;
+        const fStorageAddress = process.env.F_STORAGE_ADDRESS;
         size = size.toString();
         const sizeWei = ethers.utils.parseEther(size).toString(10);
         const initialDate = moment("1970-01-01");
@@ -30,7 +29,8 @@ module.exports = {
         var result = await contract.createFutureContract(
           title,
           sizeWei,
-          endDateSeconds
+          endDateSeconds,
+          fStorageAddress
         );
         console.log("createFuture", result);
         resolve("Future contract created");
@@ -41,7 +41,7 @@ module.exports = {
     });
   },
 
-  saveContractDb: function(pk) {
+  saveViaFabric: function(pk) {
     return new Promise(async function(resolve, reject) {
       try {
         const abiFactory = JSON.parse(compiledFactory.interface);
@@ -56,11 +56,12 @@ module.exports = {
 
         var contractsAmount = await factoryContract.getContractsAmount();
         var strAmount = contractsAmount.toString();
+
         //Address of last deployed future contract
         var futureContractAddress = await factoryContract.deployedContracts(
           parseInt(strAmount) - 1
         );
-
+        // Get information from futureContract deployed on blockchain
         const abiFuture = JSON.parse(compiledFuture.interface);
         var deployedFutureContract = new ethers.Contract(
           futureContractAddress,
@@ -74,6 +75,7 @@ module.exports = {
           title
         ] = await deployedFutureContract.getStorageVars();
 
+        // Save on DB
         var futureContract = new FutureContract({
           address: futureContractAddress,
           title: title,
@@ -93,7 +95,51 @@ module.exports = {
           }
         );
       } catch (e) {
-        console.log("saveContractDb Error: ", e);
+        console.log("saveContractViaFabric Error: ", e);
+        reject(e);
+      }
+    });
+  },
+
+  saveDirect: function(pk, contractAddress) {
+    return new Promise(async function(resolve, reject) {
+      try {
+        const abiFuture = JSON.parse(compiledFuture.interface);
+        var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
+        var wallet = new ethers.Wallet(pk, provider);
+
+        var deployedFutureContract = new ethers.Contract(
+          contractAddress,
+          abiFuture,
+          wallet
+        );
+
+        let [
+          endDate,
+          contractSize,
+          title
+        ] = await deployedFutureContract.getStorageVars();
+
+        var futureContract = new FutureContract({
+          address: contractAddress,
+          title: title,
+          size: contractSize,
+          endDate: endDate,
+          manager: wallet.address
+        });
+
+        futureContract.save().then(
+          doc => {
+            //console.log("Saved document: ", doc);
+            resolve(doc);
+          },
+          e => {
+            console.log("Error: ", e);
+            reject(e);
+          }
+        );
+      } catch (e) {
+        console.log("saveContractDirect Error: ", e);
         reject(e);
       }
     });

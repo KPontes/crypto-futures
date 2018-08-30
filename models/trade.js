@@ -1,6 +1,14 @@
 const mongoose = require("mongoose");
 var { Transaction } = require("./transaction.js");
 
+const OrderStates = Object.freeze({
+  dbOnly: "dbOnly",
+  open: "open",
+  calculated: "calculated",
+  closed: "closed",
+  deleted: "deleted"
+});
+
 var TradeSchema = new mongoose.Schema(
   {
     _id: {
@@ -42,13 +50,18 @@ var TradeSchema = new mongoose.Schema(
       type: Number,
       required: true
     },
-    exitPrice: { default: 0 },
-    sellerExitEtherAmount: { default: 0 },
-    buyerExitEtherAmount: { default: 0 },
-    sellerWithdraw: { default: 0 },
-    buyerWithdraw: { default: 0 },
-    closed: { default: false },
-    settled: { default: false }
+    status: {
+      type: String,
+      enum: Object.values(OrderStates),
+      default: OrderStates.dbOnly,
+      required: true
+    },
+    exitPrice: { type: Number, default: 0, required: true },
+    exitFactor: { type: Number, default: 1, required: true },
+    sellerExitEtherAmount: { type: Number, default: 1, required: true },
+    buyerExitEtherAmount: { type: Number, default: 1, required: true },
+    sellerWithdraw: { type: Number, default: 0, required: true },
+    buyerWithdraw: { type: Number, default: 0, required: true }
   },
   {
     timestamps: true
@@ -74,6 +87,10 @@ TradeSchema.methods.correlateTransaction = function(
   });
   return true;
 };
+
+Object.assign(TradeSchema.statics, {
+  OrderStates
+});
 
 var Trade = mongoose.model("Trade", TradeSchema);
 

@@ -76,8 +76,6 @@ exports.createBuyOrderBlockchainEthers = function(
 ) {
   return new Promise(async function(resolve, reject) {
     try {
-      //contract 0x44EeC9a449C28EC8EBBBd483A39FbE6156702E7E
-
       //***código sk secalc (1)
       var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
       var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
@@ -90,24 +88,23 @@ exports.createBuyOrderBlockchainEthers = function(
         value: weiBN
       };
 
-      var transaction = await contract.createBuyOrder(
+      var transaction = await contract.createOrder(
+        1,
         buyorder._id.toString(),
         buyorder.contractsAmount,
         buyorder.margin,
-        buyorder.dealPrice,
+        (buyorder.dealPrice * 100).toFixed(0),
         options
       );
-      console.log("transaction: ", transaction);
+      console.log("createBuyOrder transaction: ", transaction);
       var transaction = await provider.waitForTransaction(transaction.hash);
-      console.log("Transaction Mined: " + transaction);
       var transactionReceipt = await provider.getTransactionReceipt(
         transaction.hash
       );
-      console.log("transactionReceipt", transactionReceipt);
+      console.log("createBuyOrder transactionReceipt", transactionReceipt);
       if (transactionReceipt.status === 1) {
         buyorder.status = BuyOrder.OrderStates.open;
         var updatedBO = await buyorder.save();
-        console.log("updatedBO", updatedBO);
       }
       resolve(transactionReceipt);
     } catch (e) {
@@ -174,8 +171,44 @@ exports.createBuyOrderBlockchainWeb3 = function(buyorder, pk, contractAddress) {
   });
 };
 
+exports.getBuyOrderEthers = function(key, contractTitle, pk) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      var futureContract = await FutureContract.findOne({
+        title: contractTitle
+      }).exec();
+      if (!futureContract) {
+        throw `getBuyOrderEthers Error: contract ${contractTitle} not found`;
+      }
+      var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
+      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
+      const abi = JSON.parse(compiledContract.interface);
+      var wallet = new ethers.Wallet(sk, provider);
+      var contract = new ethers.Contract(futureContract.address, abi, wallet);
+      var bo = {};
+      let [
+        buyer,
+        contractsAmount,
+        depositedEther,
+        fees,
+        dealPrice
+      ] = await contract.getOrder(1, key);
+      bo.buyer = buyer;
+      bo.contractsAmount = contractsAmount.toString(10);
+      bo.depositedEther = depositedEther.toString(10);
+      bo.fees = fees.toString(10);
+      bo.dealPrice = dealPrice.toString(10);
+      console.log("getBuyOrder transaction: ", bo);
+      resolve(bo);
+    } catch (e) {
+      console.log("getBuyOrder Error: ", e);
+      reject(e);
+    }
+  });
+};
+
 var calculateFee = function(etherValue) {
-  return parseFloat(etherValue) * 0.001 + 0.0009; //minus commision and GAS
+  return parseFloat(etherValue) / 1000; //minus commision
 };
 
 //(1)
