@@ -7,6 +7,8 @@ const { Transaction } = require("../models/transaction.js");
 const { Trade } = require("../models/trade.js");
 const { FutureContract } = require("../models/futurecontract.js");
 const compiledContract = require("../ethereum/build/FutureContract.json");
+const etherParams = require("../ethereum/etherParams.js");
+const ctrlFutureContract = require("./ctrl-future-contract.js");
 
 var _this = this;
 
@@ -88,11 +90,12 @@ exports.createTradeBlockchainEthers = function(
   return new Promise(async function(resolve, reject) {
     try {
       var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
-      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-      const abi = JSON.parse(compiledContract.interface);
-      var wallet = new ethers.Wallet(sk, provider);
-      var contract = new ethers.Contract(contractAddress, abi, wallet);
-
+      var contract = etherParams.initialize(
+        compiledContract,
+        sk,
+        contractAddress
+      );
+      const provider = etherParams.provider;
       var transaction = await contract.createTrade(
         trade._id.toString(),
         buyOrder._id.toString(),
@@ -119,17 +122,15 @@ exports.createTradeBlockchainEthers = function(
 exports.getTradeEthers = function(key, contractTitle, pk) {
   return new Promise(async function(resolve, reject) {
     try {
-      var futureContract = await FutureContract.findOne({
-        title: contractTitle
-      }).exec();
-      if (!futureContract) {
-        throw `getTradeEthers Error: contract ${contractTitle} not found`;
-      }
+      var futureContract = await ctrlFutureContract.findContractBd(
+        contractTitle
+      );
       var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
-      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-      const abi = JSON.parse(compiledContract.interface);
-      var wallet = new ethers.Wallet(sk, provider);
-      var contract = new ethers.Contract(futureContract.address, abi, wallet);
+      var contract = etherParams.initialize(
+        compiledContract,
+        sk,
+        futureContract.address
+      );
       var trade = {};
       let [
         buyerExitEtherAmount,
@@ -158,12 +159,9 @@ exports.calculateLiquidation = function(
 ) {
   return new Promise(async function(resolve, reject) {
     try {
-      var futureContract = await FutureContract.findOne({
-        title: contractTitle
-      }).exec();
-      if (!futureContract) {
-        throw `calcLiquidation Error: contract ${contractTitle} not found`;
-      }
+      var futureContract = await ctrlFutureContract.findContractBd(
+        contractTitle
+      );
       var trade = await Trade.findOne({
         _id: ObjectId(tradeKey)
       }).exec();
@@ -211,24 +209,22 @@ exports.calculateLiquidationEthers = function(
 ) {
   return new Promise(async function(resolve, reject) {
     try {
-      var futureContract = await FutureContract.findOne({
-        title: contractTitle
-      }).exec();
-      if (!futureContract) {
-        throw `calcLiquidationEthers Error: contract ${contractTitle} not found`;
-      }
+      var futureContract = await ctrlFutureContract.findContractBd(
+        contractTitle
+      );
       var trade = await Trade.findOne({
         _id: ObjectId(tradeKey)
       }).exec();
       if (!trade) {
         throw `calcLiquidationEthers Error: trade ${tradeKey} not found`;
       }
-
       var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
-      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-      const abi = JSON.parse(compiledContract.interface);
-      var wallet = new ethers.Wallet(sk, provider);
-      var contract = new ethers.Contract(futureContract.address, abi, wallet);
+      var contract = etherParams.initialize(
+        compiledContract,
+        sk,
+        futureContract.address
+      );
+      var provider = etherParams.provider;
       exitFactor = exitFactor * 1000000;
       exitPrice = exitPrice * 100;
 
@@ -254,24 +250,23 @@ exports.calculateLiquidationEthers = function(
 exports.tradeWithdrawEthers = function(pk, contractTitle, tradeKey) {
   return new Promise(async function(resolve, reject) {
     try {
-      var futureContract = await FutureContract.findOne({
-        title: contractTitle
-      }).exec();
-      if (!futureContract) {
-        throw `tradeWithdrawEthers Error: contract ${contractTitle} not found`;
-      }
+      var futureContract = await ctrlFutureContract.findContractBd(
+        contractTitle
+      );
       var trade = await Trade.findOne({
         _id: ObjectId(tradeKey)
       }).exec();
       if (!trade) {
         throw `tradeWithdrawEthers Error: trade ${tradeKey} not found`;
       }
-
       var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
-      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-      const abi = JSON.parse(compiledContract.interface);
-      var wallet = new ethers.Wallet(sk, provider);
-      var contract = new ethers.Contract(futureContract.address, abi, wallet);
+      var contract = etherParams.initialize(
+        compiledContract,
+        sk,
+        futureContract.address
+      );
+      var provider = etherParams.provider;
+      var wallet = contract.signer;
       trade.status = Trade.OrderStates.closed;
       if (wallet.address.toLowerCase() == trade.buyerAddress.toLowerCase()) {
         trade.buyerWithdraw = trade.buyerExitEtherAmount;

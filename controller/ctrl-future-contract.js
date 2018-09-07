@@ -104,9 +104,10 @@ module.exports = {
   saveDirect: function(pk, contractAddress) {
     return new Promise(async function(resolve, reject) {
       try {
+        var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
         const abiFuture = JSON.parse(compiledFuture.interface);
         var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-        var wallet = new ethers.Wallet(pk, provider);
+        var wallet = new ethers.Wallet(sk, provider);
 
         var deployedFutureContract = new ethers.Contract(
           contractAddress,
@@ -140,6 +141,23 @@ module.exports = {
         );
       } catch (e) {
         console.log("saveContractDirect Error: ", e);
+        reject(e);
+      }
+    });
+  },
+
+  findContractBd: function(contractTitle) {
+    return new Promise(async function(resolve, reject) {
+      try {
+        var futureContract = await FutureContract.findOne({
+          title: contractTitle
+        }).exec();
+        if (!futureContract) {
+          throw `findContractBd Error: contract ${contractTitle} not found`;
+        }
+        resolve(futureContract);
+      } catch (e) {
+        console.log("Error: ", e);
         reject(e);
       }
     });

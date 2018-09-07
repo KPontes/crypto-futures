@@ -1,6 +1,8 @@
 require("../config/config.js");
 const web3 = require("../ethereum/web3.js");
 const ethers = require("ethers");
+const etherParams = require("../ethereum/etherParams.js");
+const ctrlFutureContract = require("./ctrl-future-contract.js");
 const cryptojs = require("../utils/cipher.js");
 const secalc = require("../utils/secalc.js");
 const { mongoose } = require("../db/mongoose.js");
@@ -22,21 +24,16 @@ exports.createDb = function(
   return new Promise(async function(resolve, reject) {
     try {
       const abi = JSON.parse(compiledContract.interface);
-
-      var futureContract = await FutureContract.findOne({
-        title: contractTitle
-      }).exec();
-      if (!futureContract) {
-        throw `SellOrder create Error: contract ${contractTitle} not found`;
-      }
-
+      var futureContract = await ctrlFutureContract.findContractBd(
+        contractTitle
+      );
       const w3Provided = web3.web3WithProvider();
       const balance = await w3Provided.eth.getBalance(sellerAddress);
       if (
         !balance >
         contractsAmount * futureContract.size + process.env.RESERVE_GAS
       ) {
-        throw "BuyOrder create Error: Insufficient balance for contractSize + GAS";
+        throw "SellOrder create Error: Insufficient balance for contractSize + GAS";
       }
       var fee = calculateFee(etherValue);
 
@@ -52,7 +49,7 @@ exports.createDb = function(
       });
       var doc = await sellorder.save();
       //***código sk secalc (2)
-      console.log("sellorder", doc);
+      //console.log("sellorder", doc);
       var transaction = await _this.createSellOrderBlockchainEthers(
         doc,
         pk,
@@ -75,16 +72,17 @@ exports.createSellOrderBlockchainEthers = function(
     try {
       //***código sk secalc (1)
       var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
-      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-      const abi = JSON.parse(compiledContract.interface);
-      var wallet = new ethers.Wallet(sk, provider);
-      var contract = new ethers.Contract(contractAddress, abi, wallet);
+      var contract = etherParams.initialize(
+        compiledContract,
+        sk,
+        contractAddress
+      );
+      const provider = etherParams.provider;
       var wei = ethers.utils.parseEther(sellorder.depositedEther.toString());
       var weiBN = ethers.utils.bigNumberify(wei);
       var options = {
         value: weiBN
       };
-
       var transaction = await contract.createOrder(
         2,
         sellorder._id.toString(),
@@ -114,17 +112,15 @@ exports.createSellOrderBlockchainEthers = function(
 exports.getSellOrderEthers = function(key, contractTitle, pk) {
   return new Promise(async function(resolve, reject) {
     try {
-      var futureContract = await FutureContract.findOne({
-        title: contractTitle
-      }).exec();
-      if (!futureContract) {
-        throw `getSellOrderEthers Error: contract ${contractTitle} not found`;
-      }
+      var futureContract = await ctrlFutureContract.findContractBd(
+        contractTitle
+      );
       var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
-      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-      const abi = JSON.parse(compiledContract.interface);
-      var wallet = new ethers.Wallet(sk, provider);
-      var contract = new ethers.Contract(futureContract.address, abi, wallet);
+      var contract = etherParams.initialize(
+        compiledContract,
+        sk,
+        futureContract.address
+      );
       var so = {};
       let [
         seller,
@@ -132,7 +128,7 @@ exports.getSellOrderEthers = function(key, contractTitle, pk) {
         depositedEther,
         fees,
         dealPrice
-      ] = await contract.getOrder(2, key);
+      ] = await contract.getOrder(2, key); //sellOrder type=2
       so.seller = seller;
       so.contractsAmount = contractsAmount.toString(10);
       so.depositedEther = depositedEther.toString(10);
