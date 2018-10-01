@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { BrowserRouter, Route } from "react-router-dom";
+import dotenv from "dotenv";
 
 import TemplateHome from "./template-home";
 import TemplateBalance from "./template-balance";
@@ -7,6 +8,7 @@ import TemplateCreateWallet from "./template-create-wallet";
 import TemplateSendEther from "./template-send-ether";
 import TemplateReceiveEther from "./template-receive-ether";
 import TemplateContact from "./template-contact";
+import TemplateExchange from "./template-exchange";
 
 const Teste = () => <h2>SurveyNew</h2>;
 
@@ -17,6 +19,7 @@ export default class App extends Component {
         <BrowserRouter>
           <div>
             <Route exact path="/" component={TemplateHome} />
+            <Route exact path="/trade" component={TemplateExchange} />
             <Route exact path="/balance" component={TemplateBalance} />
             <Route path="/balance/:address" component={TemplateBalance} />
             <Route

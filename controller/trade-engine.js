@@ -49,37 +49,7 @@ TradeEngine.prototype.executeTrade = async function(contractTitle, pk) {
   );
 };
 
-TradeEngine.prototype.executeOnce = async function(contractTitle, pk) {
-  var _this = this;
-  var fc = await FutureContract.findOne({ title: contractTitle }).exec();
-  if (!fc) {
-    _this.stopExecute = true;
-    console.log(`Err executeTrade. Contract ${contractTitle} not fount`);
-  }
-
-  try {
-    if (_this.stopExecute) {
-      console.log("Stop executeTrade loop");
-      stop();
-    }
-    var result = await _this.matchOrders(fc, pk);
-    if (result !== "OK") {
-      _this.stopExecute = true;
-      throw result;
-    }
-  } catch (err) {
-    console.log("Err executeOnceTrade", err);
-    _this.stopExecute = true;
-  }
-};
-
-TradeEngine.prototype.stopTrade = function() {
-  this.stopExecute = true;
-  // clearInterval(this.intervalObject);
-  console.log("stopTrade");
-};
-
-TradeEngine.prototype.matchOrders = async function(futureContract, pk) {
+TradeEngine.prototype.matchOrders = async function(futureContract) {
   try {
     var contractAddress = futureContract.address;
     var iSell = 0;
@@ -134,15 +104,6 @@ TradeEngine.prototype.matchOrders = async function(futureContract, pk) {
               sellOrders[iSell],
               tradeId
             );
-            if (updatedBuyOrder && updatedSellOrder) {
-              await trade.createTradeBlockchainEthers(
-                pk,
-                newTrade,
-                buyOrderMatches[0],
-                sellOrders[iSell],
-                contractAddress
-              );
-            }
           }
         }
       }
@@ -154,6 +115,36 @@ TradeEngine.prototype.matchOrders = async function(futureContract, pk) {
     console.log("Err matchOrders: ", e);
     return e.message;
   }
+};
+
+TradeEngine.prototype.executeOnce = async function(contractTitle) {
+  var _this = this;
+  var fc = await FutureContract.findOne({ title: contractTitle }).exec();
+  if (!fc) {
+    _this.stopExecute = true;
+    console.log(`Err executeTrade. Contract ${contractTitle} not fount`);
+  }
+
+  try {
+    if (_this.stopExecute) {
+      console.log("Stop executeTrade loop");
+      stop();
+    }
+    var result = await _this.matchOrders(fc);
+    if (result !== "OK") {
+      _this.stopExecute = true;
+      throw result;
+    }
+  } catch (err) {
+    console.log("Err executeOnceTrade", err);
+    _this.stopExecute = true;
+  }
+};
+
+TradeEngine.prototype.stopTrade = function() {
+  this.stopExecute = true;
+  // clearInterval(this.intervalObject);
+  console.log("stopTrade");
 };
 
 TradeEngine.prototype.updateBuyOrder = async function(

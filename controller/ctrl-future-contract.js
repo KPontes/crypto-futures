@@ -3,163 +3,193 @@ const ethers = require("ethers");
 const moment = require("moment");
 require("../config/config.js");
 const { mongoose } = require("../db/mongoose.js");
+const etherParams = require("../ethereum/etherParams.js");
 const compiledFactory = require("../ethereum/build/FutureContractFactory.json");
 const compiledFuture = require("../ethereum/build/FutureContract.json");
 const { FutureContract } = require("../models/futurecontract.js");
+
 //require("dotenv").config();
 
-module.exports = {
-  //pk from the contract creator account
-  createFuture: function(pk, title, size, endDate) {
-    return new Promise(async function(resolve, reject) {
-      try {
-        const abi = JSON.parse(compiledFactory.interface);
-        var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-        const factoryAddress = process.env.FACTORY_ADDRESS;
-        const fStorageAddress = process.env.F_STORAGE_ADDRESS;
-        size = size.toString();
-        const sizeWei = ethers.utils.parseEther(size).toString(10);
-        const initialDate = moment("1970-01-01");
-        endDate = moment(endDate);
-        const duration = moment.duration(endDate.diff(initialDate));
-        const endDateSeconds = duration.asSeconds();
-        var wallet = new ethers.Wallet(pk, provider);
-        var contract = new ethers.Contract(factoryAddress, abi, wallet);
+var _this = this;
 
-        var result = await contract.createFutureContract(
-          title,
-          sizeWei,
-          endDateSeconds,
-          fStorageAddress
-        );
-        console.log("createFuture", result);
-        resolve("Future contract created");
-      } catch (e) {
-        console.log("createFuture Error: ", e);
-        reject(e);
-      }
-    });
-  },
+exports.balanceEthers = function(contractTitle, pk) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      var futureContract = await _this.findContractBd(contractTitle);
 
-  saveViaFabric: function(pk) {
-    return new Promise(async function(resolve, reject) {
-      try {
-        const abiFactory = JSON.parse(compiledFactory.interface);
-        var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-        const factoryAddress = process.env.FACTORY_ADDRESS;
-        var wallet = new ethers.Wallet(pk, provider);
-        var factoryContract = new ethers.Contract(
-          factoryAddress,
-          abiFactory,
-          wallet
-        );
+      var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
+      var contract = etherParams.initialize(
+        compiledFuture,
+        sk,
+        futureContract.address
+      );
+      const balance = await contract.deployed.balance(contract.wallet.address);
+      resolve("balance (wei): " + balance.toString(10));
+    } catch (e) {
+      console.log("balance Error: ", e);
+      reject(e);
+    }
+  });
+};
 
-        var contractsAmount = await factoryContract.getContractsAmount();
-        var strAmount = contractsAmount.toString();
+//pk from the contract creator account
+exports.createFuture = function(pk, title, size, endDate) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      const abi = JSON.parse(compiledFactory.interface);
+      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
+      const factoryAddress = process.env.FACTORY_ADDRESS;
+      const fStorageAddress = process.env.F_STORAGE_ADDRESS;
+      size = size.toString();
+      const sizeWei = ethers.utils.parseEther(size).toString(10);
+      const initialDate = moment("1970-01-01");
+      endDate = moment(endDate);
+      const duration = moment.duration(endDate.diff(initialDate));
+      const endDateSeconds = duration.asSeconds();
+      var wallet = new ethers.Wallet(pk, provider);
+      var contract = new ethers.Contract(factoryAddress, abi, wallet);
 
-        //Address of last deployed future contract
-        var futureContractAddress = await factoryContract.deployedContracts(
-          parseInt(strAmount) - 1
-        );
-        // Get information from futureContract deployed on blockchain
-        const abiFuture = JSON.parse(compiledFuture.interface);
-        var deployedFutureContract = new ethers.Contract(
-          futureContractAddress,
-          abiFuture,
-          wallet
-        );
+      var result = await contract.createFutureContract(
+        title,
+        sizeWei,
+        endDateSeconds,
+        fStorageAddress
+      );
+      console.log("createFuture", result);
+      resolve("Future contract created");
+    } catch (e) {
+      console.log("createFuture Error: ", e);
+      reject(e);
+    }
+  });
+};
 
-        let [
-          endDate,
-          contractSize,
-          title
-        ] = await deployedFutureContract.getStorageVars();
+exports.saveViaFabric = function(pk) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      const abiFactory = JSON.parse(compiledFactory.interface);
+      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
+      const factoryAddress = process.env.FACTORY_ADDRESS;
+      var wallet = new ethers.Wallet(pk, provider);
+      var factoryContract = new ethers.Contract(
+        factoryAddress,
+        abiFactory,
+        wallet
+      );
 
-        // Save on DB
-        var futureContract = new FutureContract({
-          address: futureContractAddress,
-          title: title,
-          size: contractSize,
-          endDate: endDate,
-          manager: wallet.address
-        });
+      var contractsAmount = await factoryContract.getContractsAmount();
+      var strAmount = contractsAmount.toString();
 
-        futureContract.save().then(
-          doc => {
-            //console.log("Saved document: ", doc);
-            resolve(doc);
-          },
-          e => {
-            console.log("Error: ", e);
-            reject(e);
-          }
-        );
-      } catch (e) {
-        console.log("saveContractViaFabric Error: ", e);
-        reject(e);
-      }
-    });
-  },
+      //Address of last deployed future contract
+      var futureContractAddress = await factoryContract.deployedContracts(
+        parseInt(strAmount) - 1
+      );
+      // Get information from futureContract deployed on blockchain
+      const abiFuture = JSON.parse(compiledFuture.interface);
+      var deployedFutureContract = new ethers.Contract(
+        futureContractAddress,
+        abiFuture,
+        wallet
+      );
 
-  saveDirect: function(pk, contractAddress) {
-    return new Promise(async function(resolve, reject) {
-      try {
-        var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
-        const abiFuture = JSON.parse(compiledFuture.interface);
-        var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-        var wallet = new ethers.Wallet(sk, provider);
+      let [
+        endDate,
+        lastPrice,
+        contractSize,
+        title
+      ] = await deployedFutureContract.getStorageVars();
 
-        var deployedFutureContract = new ethers.Contract(
-          contractAddress,
-          abiFuture,
-          wallet
-        );
+      // Save on DB
+      var futureContract = new FutureContract({
+        address: futureContractAddress,
+        title: title,
+        size: contractSize,
+        lastPrice: lastPrice,
+        endDate: endDate,
+        manager: wallet.address
+      });
 
-        let [
-          endDate,
-          contractSize,
-          title
-        ] = await deployedFutureContract.getStorageVars();
+      futureContract.save().then(
+        doc => {
+          //console.log("Saved document: ", doc);
+          resolve(doc);
+        },
+        e => {
+          console.log("Error: ", e);
+          reject(e);
+        }
+      );
+    } catch (e) {
+      console.log("saveContractViaFabric Error: ", e);
+      reject(e);
+    }
+  });
+};
 
-        var futureContract = new FutureContract({
-          address: contractAddress,
-          title: title,
-          size: contractSize,
-          endDate: endDate,
-          manager: wallet.address
-        });
+exports.saveDirect = function(pk, contractAddress) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
+      const abiFuture = JSON.parse(compiledFuture.interface);
+      var provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
+      var wallet = new ethers.Wallet(sk, provider);
 
-        futureContract.save().then(
-          doc => {
-            //console.log("Saved document: ", doc);
-            resolve(doc);
-          },
-          e => {
-            console.log("Error: ", e);
-            reject(e);
-          }
-        );
-      } catch (e) {
-        console.log("saveContractDirect Error: ", e);
-        reject(e);
-      }
-    });
-  },
+      var deployedFutureContract = new ethers.Contract(
+        contractAddress,
+        abiFuture,
+        wallet
+      );
 
-  findContractBd: function(contractTitle) {
-    return new Promise(async function(resolve, reject) {
-      try {
+      let [
+        endDate,
+        contractSize,
+        title
+      ] = await deployedFutureContract.getStorageVars();
+
+      var futureContract = new FutureContract({
+        address: contractAddress,
+        title: title,
+        size: contractSize,
+        endDate: endDate,
+        manager: wallet.address
+      });
+
+      futureContract.save().then(
+        doc => {
+          //console.log("Saved document: ", doc);
+          resolve(doc);
+        },
+        e => {
+          console.log("Error: ", e);
+          reject(e);
+        }
+      );
+    } catch (e) {
+      console.log("saveContractDirect Error: ", e);
+      reject(e);
+    }
+  });
+};
+
+exports.findContractBd = function(contractTitle) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      if (contractTitle) {
         var futureContract = await FutureContract.findOne({
           title: contractTitle
         }).exec();
-        if (!futureContract) {
-          throw `findContractBd Error: contract ${contractTitle} not found`;
-        }
-        resolve(futureContract);
-      } catch (e) {
-        console.log("Error: ", e);
-        reject(e);
+      } else {
+        var futureContract = await FutureContract.find()
+          .sort({ title: 1 })
+          .exec();
       }
-    });
-  }
+      if (!futureContract) {
+        throw `findContractBd Error: contract ${contractTitle} not found`;
+      }
+      resolve(futureContract);
+    } catch (e) {
+      console.log("Error: ", e);
+      reject(e);
+    }
+  });
 };

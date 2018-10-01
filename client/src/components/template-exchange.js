@@ -2,18 +2,18 @@ import React, { Component } from "react";
 
 import Header from "./header";
 import Footer from "./footer";
-import CreateWallet from "./create-wallet";
+import Exchange from "./exchange";
 
-class TemplateCreateWallet extends Component {
+class TemplateExchange extends Component {
   render() {
     return (
       <div className="container-fluid">
-        <Header activeMenuItem={"wallet"} />
-        <CreateWallet />
+        <Header activeMenuItem={"trade"} />
+        <Exchange />
         <Footer />
       </div>
     );
   }
 }
 
-export default TemplateCreateWallet;
+export default TemplateExchange;

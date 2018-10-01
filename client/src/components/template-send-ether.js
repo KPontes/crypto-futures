@@ -8,7 +8,7 @@ class TemplateSendEther extends Component {
   render() {
     return (
       <div className="container-fluid">
-        <Header activeMenuItem={"sendether"} />
+        <Header activeMenuItem={"wallet"} />
         <SendEtherChoice />
         <Footer />
       </div>

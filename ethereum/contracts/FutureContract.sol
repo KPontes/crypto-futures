@@ -2,17 +2,22 @@ pragma solidity 0.4.24;
 
 import "./IFutureStorage.sol";
 
-//"ETHK18", "100000000000000000", "1535587200",  "0xca35b7d915458ef540ade6068dfe2f44e8fa733c", "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a"
+//import "browser/IFutureContract.sol";
+//"ETHK18", "100000000000000000", "1635587200",  "0xec5bee2dbb67da8757091ad3d9526ba3ed2e2137"
+
 contract FutureContract  {
 
     IFutureStorage  FS;
 
     struct ContractParams {
-        address owner;
-        uint endDate;
-        uint contractSize; //in wei
         string title;
+        address owner;
+        uint contractSize; //in wei
+        uint endDate;
+        uint lastPrice; // *100
+        bool allowWithdraw;
     }
+
 
     ContractParams public contractParams;
     mapping(address => uint) public balance;
@@ -30,34 +35,18 @@ contract FutureContract  {
     constructor(string _title, uint _contractSize, uint _endDate, address manager, address _FS) public {
         //require(address(this).balance == 0, "Used address attack");
         contractParams.owner = manager;
+        contractParams.title = _title;
         contractParams.contractSize = _contractSize;
         contractParams.endDate = _endDate;
-        contractParams.title = _title;
+        contractParams.lastPrice = 0;
+        contractParams.allowWithdraw = false;
         FS = IFutureStorage(_FS);
     }
 
-    /* function createBuyOrder(
-        string key,
-        uint contractsAmount,
-        uint margin,
-        uint dealPrice
-        ) payable public {
-
-        validateOrder(msg.sender, msg.value, contractsAmount);
-
-        // require(msg.value >= contractsAmount * contractParams.contractSize, "Insufficient deposit");
-        // require(msg.sender != contractParams.owner, "Manager can not bid");
-        // require (now < contractParams.endDate, "End date expired");
-
-        bytes32 keyByte = keccak256(bytes(key));
-        uint fees = calculateFee(msg.value);
-        FS.createBuyOrder(msg.sender, keyByte, contractsAmount, margin, dealPrice, msg.value, fees);
-        balance[contractParams.owner] += fees;
-    } */
-
-    /* function getBuyOrder(string key) public view returns(address, uint, uint, uint, uint) {
-        return FS.getBuyOrder(key);
-    } */
+    function setLiquidationPrice(uint _price, bool _allowWithdraw) restricted public {
+        contractParams.lastPrice = _price;
+        contractParams.allowWithdraw = _allowWithdraw;
+    }
 
     function createOrder(
         uint8 orderType,
@@ -88,48 +77,38 @@ contract FutureContract  {
         }
     }
 
-    function createTrade(string tradeKey, string buyOrderKey, string sellOrderKey) restricted public  {
-
-      //require (now <= contractParams.endDate, "End date expired");
-      if (now > contractParams.endDate) {
-            revert(); //End date expired
-        }
-
-      bytes32 tradeByte = keccak256(bytes(tradeKey));
-      bytes32 buyByte = keccak256(bytes(buyOrderKey));
-      bytes32 sellByte = keccak256(bytes(sellOrderKey));
-      FS.createTrade(tradeByte, buyByte, sellByte);
-    }
-
-    function getTrade(string key) public view returns(uint, uint, uint, uint) {
+    function getTrade(string key) public view returns(uint, uint, uint, uint, uint, uint, uint) {
         return FS.getTrade(key);
     }
 
-    function calculateLiquidation(string tradeKey, uint exitFactor, uint exitPrice) public restricted  {
+    function processLiquidation(string tradeKey, string buyOrderKey, string sellOrderKey) public {
         //uncomment for PRD
         //require(contractParams.endDate <= now, "Wait for expiration date");
-        bytes32 keyByte = keccak256(bytes(tradeKey));
-        FS.calculateLiquidation(keyByte, exitFactor, exitPrice);
+        require(contractParams.lastPrice > 0 && contractParams.allowWithdraw, "Need to set mature price");
+        bytes32 tradeByte = keccak256(bytes(tradeKey));
+        bytes32 buyByte = keccak256(bytes(buyOrderKey));
+        bytes32 sellByte = keccak256(bytes(sellOrderKey));
+        FS.processLiquidation(tradeByte, buyByte, sellByte, contractParams.lastPrice);
+        tradeWithdraw(tradeByte, msg.sender);
     }
 
-    function tradeWithdraw(string tradeKey) public {
-        bytes32 keyByte = keccak256(bytes(tradeKey));
+    function tradeWithdraw(bytes32 tradeByte, address caller) private {
         bool isBuyer;
         uint exitEtherAmount;
-        (isBuyer, exitEtherAmount) = FS.tradeWithdraw(keyByte, msg.sender);
+        (isBuyer, exitEtherAmount) = FS.tradeWithdraw(tradeByte, caller);
         //there is still wei to withdraw
         if (exitEtherAmount > 1) {
-            FS.setTradeWithdraw(keyByte, isBuyer, 0);
-            if(!msg.sender.send(exitEtherAmount)) {
-                //on failure, return allowance to future withdraw
-                FS.setTradeWithdraw(keyByte, isBuyer, exitEtherAmount);
+            FS.setTradeWithdrawValues(tradeByte, isBuyer, 0);
+            if(!caller.send(exitEtherAmount)) {
+                //on failure, return allowance for future withdraw
+                FS.setTradeWithdrawValues(tradeByte, isBuyer, exitEtherAmount);
             }
         }
 
     }
 
-    function getStorageVars() public view returns(uint, uint, string, address) {
-        return (contractParams.endDate, contractParams.contractSize, contractParams.title, contractParams.owner);
+    function getStorageVars() public view returns(uint, uint, uint, string, address) {
+        return (contractParams.endDate, contractParams.lastPrice, contractParams.contractSize, contractParams.title, contractParams.owner);
     }
 
     function calculateFee(uint etherValue) private pure returns(uint) {

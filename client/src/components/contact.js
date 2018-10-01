@@ -99,12 +99,6 @@ const Contact = () => {
             For support check our FAQ or send us your issue on Slack.
           </small>
         </p>
-        <p>
-          <small>
-            When making any donation, please let us know by sending an email or
-            a message on slack.
-          </small>
-        </p>
       </div>
     );
   }

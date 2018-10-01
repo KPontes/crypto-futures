@@ -44,11 +44,11 @@ npm install --save redux react-redux react-router-dom@4.2.2
 Other installed packages on the Client:
 @axetroy/react-download crypto-js react-simple-file-input moment react-bootstrap
 validator heroku-ssl-redirect react-browser-detection axios react-number-format
-jest ethers
+jest ethers socket.io-client
 
 On the Server:
 mongodb, mongoose, body-parser, interval-promise, fs-extra, ethers, solc, truffle-hdwallet-provider,
-web3@1.0.0-beta.34 moment dotenv crypto-js ethereumjs-tx
+web3@1.0.0-beta.34 moment dotenv crypto-js ethereumjs-tx axios socket.io
 
 Deployment
 compile manually to generate the build json files:

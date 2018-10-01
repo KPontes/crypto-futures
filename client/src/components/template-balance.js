@@ -8,7 +8,7 @@ class TemplateBalance extends Component {
   render() {
     return (
       <div className="container-fluid">
-        <Header activeMenuItem={"balance"} />
+        <Header activeMenuItem={"wallet"} />
         <Address address={this.props.match.params.address} />
         <Footer />
       </div>

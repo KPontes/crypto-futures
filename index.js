@@ -1,4 +1,5 @@
 require("./config/config.js");
+require("./serverwebsocket");
 
 const _ = require("lodash");
 const { ObjectID } = require("mongodb");
@@ -12,19 +13,28 @@ const { Trade } = require("./models/trade.js");
 const { Transaction } = require("./models/transaction.js");
 const { FutureContract } = require("./models/futurecontract.js");
 const TradeEngine = require("./controller/trade-engine.js");
-const factory = require("./controller/ctrl-future-contract.js");
+const FutureParams = require("./controller/futureParams.js");
+const ctrlfc = require("./controller/ctrl-future-contract.js");
 const ctrlBuyOrder = require("./controller/buyOrder.js");
 const ctrlSellOrder = require("./controller/sellOrder.js");
 const ctrlTrade = require("./controller/trade.js");
-const ctrlTest = require("./controller/testFunctions.js"); //const web3 = require("./ethereum/web3.js");
+//const ctrlTest = require("./controller/testFunctions.js"); //const web3 = require("./ethereum/web3.js");
 
 const app = express();
 const port = process.env.PORT;
 
 app.use(bodyParser.json());
-
+app.use(function(req, res, next) {
+  //enable CORS
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+  next();
+});
 app.get("/express", (req, res) => {
-  res.send({ message: "Welcome to eth-Wallet Express Server" });
+  res.send({ message: "Welcome to crypto-Futures Express Server" });
 });
 
 if (process.env.NODE_ENV === "production") {
@@ -44,7 +54,7 @@ if (process.env.NODE_ENV === "production") {
 
 app.post("/createcontract", async (req, res) => {
   try {
-    const result = await factory.createFuture(
+    const result = await ctrlfc.createFuture(
       req.body.pk,
       req.body.title,
       req.body.size,
@@ -59,7 +69,7 @@ app.post("/createcontract", async (req, res) => {
 
 app.post("/savebyfabric", async (req, res) => {
   try {
-    const result = await factory.saveViaFabric(req.body.pk);
+    const result = await ctrlfc.saveViaFabric(req.body.pk);
     res.status(200).send(result);
   } catch (e) {
     console.log("Error: ", e);
@@ -68,7 +78,7 @@ app.post("/savebyfabric", async (req, res) => {
 });
 app.post("/savedirect", async (req, res) => {
   try {
-    const result = await factory.saveDirect(
+    const result = await ctrlfc.saveDirect(
       req.body.pk,
       req.body.contractAddress
     );
@@ -143,22 +153,6 @@ app.post("/getsellorder", async (req, res) => {
   }
 });
 
-var tradeEngine = new TradeEngine(5000);
-app.post("/executetrade", async (req, res) => {
-  try {
-    //contractTitle AO INVÉS DE PARÂMETRO, DEVE SER ITERADO NO BD
-    //var result = await tradeEngine.executeOnce(
-    var result = await tradeEngine.executeTrade(
-      req.body.contractTitle,
-      req.body.pk
-    );
-    res.send(result);
-  } catch (e) {
-    console.log("Error: ", e);
-    res.status(400).send(e);
-  }
-});
-
 app.post("/gettrade", async (req, res) => {
   try {
     const result = await ctrlTrade.getTradeEthers(
@@ -173,13 +167,60 @@ app.post("/gettrade", async (req, res) => {
   }
 });
 
-app.post("/calcliquidation", async (req, res) => {
+app.post("/listtrades", async (req, res) => {
   try {
-    const result = await ctrlTrade.calculateLiquidation(
+    const result = await ctrlTrade.list(req.body.contractTitle);
+    res.status(200).send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e); //refer to httpstatuses.com
+  }
+});
+
+app.post("/listcontracts", async (req, res) => {
+  try {
+    const result = await ctrlfc.findContractBd(req.body.contractTitle);
+    res.status(200).send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e); //refer to httpstatuses.com
+  }
+});
+
+app.post("/setliqprice", async (req, res) => {
+  try {
+    const result = await ctrlTrade.setLiqPriceEthers(
       req.body.pk,
       req.body.contractTitle,
-      req.body.tradeKey,
-      req.body.exitPrice
+      req.body.exitPrice,
+      req.body.allowWithdraw
+    );
+    res.status(200).send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e); //refer to httpstatuses.com
+  }
+});
+
+app.post("/estimateliquidation", async (req, res) => {
+  try {
+    const result = await ctrlTrade.estimateLiquidation(
+      req.body.contractTitle,
+      req.body.tradeKey
+    );
+    res.status(200).send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e); //refer to httpstatuses.com
+  }
+});
+
+app.post("/processliquidation", async (req, res) => {
+  try {
+    const result = await ctrlTrade.processLiquidation(
+      req.body.pk,
+      req.body.contractTitle,
+      req.body.tradeKey
     );
     res.status(200).send(result);
   } catch (e) {
@@ -212,12 +253,11 @@ app.post("/stoptrade", async (req, res) => {
   }
 });
 
-app.post("/testfunction", async (req, res) => {
+app.post("/balance", async (req, res) => {
   try {
-    const result = await ctrlTest.test(
+    const result = await ctrlfc.balanceEthers(
       req.body.contractTitle,
-      req.body.testStr,
-      req.body.depositedEther
+      req.body.pk
     );
     res.status(200).send(result);
   } catch (e) {
@@ -226,8 +266,48 @@ app.post("/testfunction", async (req, res) => {
   }
 });
 
+var fp = new FutureParams(30000);
+app.post("/execfutureparams", async (req, res) => {
+  try {
+    //contractTitle AO INVÉS DE PARÂMETRO, DEVE SER ITERADO NO BD
+    //var result = await fp.executeOnce(
+    var result = await fp.executePooling(req.body.contractTitle);
+    res.send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e);
+  }
+});
+
+var tradeEngine = new TradeEngine(5000);
+app.post("/executetrade", async (req, res) => {
+  try {
+    //contractTitle AO INVÉS DE PARÂMETRO, DEVE SER ITERADO NO BD
+    //var result = await tradeEngine.executeOnce(
+    var result = await tradeEngine.executeTrade(req.body.contractTitle);
+    res.send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e);
+  }
+});
+
 app.listen(port, () => {
   console.log("Started on port " + port);
 });
 
 module.exports = { app };
+
+// app.post("/testfunction", async (req, res) => {
+//   try {
+//     const result = await ctrlTest.test(
+//       req.body.contractTitle,
+//       req.body.testStr,
+//       req.body.depositedEther
+//     );
+//     res.status(200).send(result);
+//   } catch (e) {
+//     console.log("Error: ", e);
+//     res.status(400).send(e); //refer to httpstatuses.com
+//   }
+// });

@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import MenuWallet from "./menu-wallet";
 
 const Header = props => {
   var importantMessage = "";
@@ -27,56 +28,25 @@ const Header = props => {
         </li>
         <li className="nav-item">
           <Link
-            to="/createwallet"
-            id="createwallet"
+            to="/trade"
+            id="trade"
             className={
-              props.activeMenuItem === "createwallet"
-                ? "nav-link active"
-                : "nav-link"
+              props.activeMenuItem === "trade" ? "nav-link active" : "nav-link"
             }
           >
-            Create Wallet
+            Trade
           </Link>
         </li>
         <li className="nav-item">
-          <Link
-            to="/balance"
-            id="balance"
-            className={
-              props.activeMenuItem === "balance"
-                ? "nav-link active"
-                : "nav-link"
+          <MenuWallet
+            btnFormat={
+              props.activeMenuItem === "wallet"
+                ? "btn btn-primary"
+                : "btn btn-link"
             }
-          >
-            View Balance
-          </Link>
+          />
         </li>
-        <li className="nav-item">
-          <Link
-            to="/sendether"
-            id="sendether"
-            className={
-              props.activeMenuItem === "sendether"
-                ? "nav-link active"
-                : "nav-link"
-            }
-          >
-            Send Ether
-          </Link>
-        </li>
-        <li className="nav-item">
-          <Link
-            to="/receiveether"
-            id="receiveether"
-            className={
-              props.activeMenuItem === "receiveether"
-                ? "nav-link active"
-                : "nav-link"
-            }
-          >
-            Receive Ether
-          </Link>
-        </li>
+
         <li className="nav-item">
           <Link
             to="/contact"

@@ -8,7 +8,7 @@ class TemplateReceiveEther extends Component {
   render() {
     return (
       <div className="container-fluid">
-        <Header activeMenuItem={"receiveether"} />
+        <Header activeMenuItem={"wallet"} />
         <ReceiveEther />
         <Footer />
       </div>

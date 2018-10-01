@@ -1,9 +1,12 @@
 const ethers = require("ethers");
 
-const provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
-exports.provider = provider;
 exports.initialize = function(compiledContract, sk, contractAddress) {
+  const provider = ethers.providers.getDefaultProvider(process.env.NETWORK);
   const abi = JSON.parse(compiledContract.interface);
   var wallet = new ethers.Wallet(sk, provider);
-  return new ethers.Contract(contractAddress, abi, wallet);
+  return {
+    deployed: new ethers.Contract(contractAddress, abi, wallet),
+    wallet: wallet,
+    provider: provider
+  };
 };

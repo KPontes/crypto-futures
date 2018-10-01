@@ -10,8 +10,7 @@ const Footer = () => {
           <div className="card-table input-margin">
             <div className="row">
               <div className="col-md-6">
-                Simple Pay Wallet is a friendly client-side interface to
-                interact with the Ethereum Blockchain Network.
+                Ethereum Futures Trading Platform.
                 <p>Free, Open Source - 2018 MIT license</p>
               </div>
               <div className="col-md-1" />
@@ -19,9 +18,6 @@ const Footer = () => {
                 <Link to="/sendether">
                   <img src="/images/donatepq.png" alt="" />
                 </Link>{" "}
-                SPW depends on the conciousness of users to keep providing a
-                free service. Please support us by donating Ethereum or Bitcoin
-                to the following addresses:
                 <p />ETH:{" "}
                 <font color="#000077">
                   0x60d48586D99F16661f09AE9cA6AbaC3d636b26e2{" "}

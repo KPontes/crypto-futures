@@ -80,40 +80,18 @@ exports.createTransaction = function(buyOrderMatches, sellOrder, tradeId) {
   });
 };
 
-exports.createTradeBlockchainEthers = function(
-  pk,
-  trade,
-  buyOrder,
-  sellOrder,
-  contractAddress
-) {
+exports.list = function(contractTitle) {
   return new Promise(async function(resolve, reject) {
     try {
-      var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
-      var contract = etherParams.initialize(
-        compiledContract,
-        sk,
-        contractAddress
+      var futureContract = await ctrlFutureContract.findContractBd(
+        contractTitle
       );
-      const provider = etherParams.provider;
-      var transaction = await contract.createTrade(
-        trade._id.toString(),
-        buyOrder._id.toString(),
-        sellOrder._id.toString()
-      );
-      console.log("createTradeEthers transaction: ", transaction);
-      var transaction = await provider.waitForTransaction(transaction.hash);
-      var transactionReceipt = await provider.getTransactionReceipt(
-        transaction.hash
-      );
-      console.log("createTradeEthers transactionReceipt", transactionReceipt);
-      if (transactionReceipt.status === 1) {
-        trade.status = Trade.OrderStates.open;
-        var updatedTrade = await trade.save();
-      }
-      resolve(transactionReceipt);
+      var tradeList = await Trade.find({
+        contractAddress: futureContract.address
+      }).exec();
+      resolve(tradeList);
     } catch (e) {
-      console.log("createTradeEthers Error: ", e);
+      console.log("listTrade Error: ", e);
       reject(e);
     }
   });
@@ -133,14 +111,20 @@ exports.getTradeEthers = function(key, contractTitle, pk) {
       );
       var trade = {};
       let [
+        buyerWithdraw,
+        sellerWithdraw,
         buyerExitEtherAmount,
         sellerExitEtherAmount,
         exitPrice,
+        exitFactor,
         status
-      ] = await contract.getTrade(key);
+      ] = await contract.deployed.getTrade(key);
+      trade.sellerWithdraw = sellerWithdraw.toString(10);
+      trade.buyerWithdraw = buyerWithdraw.toString(10);
       trade.sellerExitEtherAmount = sellerExitEtherAmount.toString(10);
       trade.buyerExitEtherAmount = buyerExitEtherAmount.toString(10);
       trade.exitPrice = exitPrice.toString(10);
+      trade.exitFactor = exitFactor.toString(10);
       trade.status = status.toString(10);
       console.log("getTrade transaction: ", trade);
       resolve(trade);
@@ -151,12 +135,69 @@ exports.getTradeEthers = function(key, contractTitle, pk) {
   });
 };
 
-exports.calculateLiquidation = function(
+exports.setLiqPrice = function(contractTitle, exitPrice, allowWithdraw) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      var futureContract = await ctrlFutureContract.findContractBd(
+        contractTitle
+      );
+
+      futureContract.allowWithdraw = allowWithdraw;
+      if (exitPrice !== 0) {
+        futureContract.lastPrice = exitPrice;
+      }
+      var updatedFC = await futureContract.save();
+      resolve(updatedFC);
+    } catch (e) {
+      console.log("setLiqPrice Error: ", e);
+      reject(e);
+    }
+  });
+};
+
+exports.setLiqPriceEthers = function(
   pk,
   contractTitle,
-  tradeKey,
-  exitPrice
+  exitPrice,
+  allowWithdraw
 ) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      var futureContract = await ctrlFutureContract.findContractBd(
+        contractTitle
+      );
+      var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
+      var contract = etherParams.initialize(
+        compiledContract,
+        sk,
+        futureContract.address
+      );
+      var provider = contract.provider;
+      if (exitPrice === 0) {
+        exitPrice = futureContract.lastPrice;
+      }
+      var transaction = await contract.deployed.setLiquidationPrice(
+        exitPrice * 100,
+        allowWithdraw
+      );
+      console.log("setLiqPriceEthers transaction: ", transaction);
+      var transaction = await provider.waitForTransaction(transaction.hash);
+      var transactionReceipt = await provider.getTransactionReceipt(
+        transaction.hash
+      );
+      console.log("setLiqPriceEthers transacReceipt", transactionReceipt);
+      if (transactionReceipt.status === 1) {
+        _this.setLiqPrice(contractTitle, exitPrice, allowWithdraw);
+      }
+      resolve(transactionReceipt);
+    } catch (e) {
+      console.log("setLiqPriceEthers Error: ", e);
+      reject(e);
+    }
+  });
+};
+
+exports.processLiquidation = function(pk, contractTitle, tradeKey) {
   return new Promise(async function(resolve, reject) {
     try {
       var futureContract = await ctrlFutureContract.findContractBd(
@@ -166,7 +207,10 @@ exports.calculateLiquidation = function(
         _id: ObjectId(tradeKey)
       }).exec();
       if (!trade) {
-        throw `calcLiquidation Error: trade ${tradeKey} not found`;
+        throw `processLiquidation Error: trade ${tradeKey} not found`;
+      }
+      if (futureContract.lastPrice === 0) {
+        throw `processLiquidation Error: mature price not set`;
       }
       const transaction = await Transaction.findOne({
         tradeKey: ObjectId(tradeKey)
@@ -174,25 +218,29 @@ exports.calculateLiquidation = function(
       const so = await SellOrder.findOne({
         _id: ObjectId(transaction.sellOrderKey)
       });
-      trade.status = Trade.OrderStates.calculated;
-      trade.exitFactor = trade.dealPrice / exitPrice;
-      trade.exitPrice = exitPrice;
-      trade.sellerExitEtherAmount =
-        so.depositedEther * trade.exitFactor - so.fees;
-      trade.buyerExitEtherAmount =
-        (2 - trade.exitFactor) * so.depositedEther - so.fees;
-      trade.status = Trade.OrderStates.calculated;
-      //save DB
-      var updatedTrade = await trade.save();
+      if (trade.exitFactor === 0) {
+        //save calculations only once
+        trade.status = Trade.OrderStates.calculated;
+        trade.exitFactor = trade.dealPrice / futureContract.lastPrice;
+        trade.exitPrice = futureContract.lastPrice;
+        trade.sellerExitEtherAmount =
+          so.depositedEther * trade.exitFactor - so.fees;
+        trade.buyerExitEtherAmount =
+          (2 - trade.exitFactor) * so.depositedEther - so.fees;
+        trade.status = Trade.OrderStates.calculated;
+        var updatedTrade = await trade.save();
+      }
+
       //save Blockchain
-      await _this.calculateLiquidationEthers(
+      await _this.processLiquidationEthers(
         pk,
         contractTitle,
-        tradeKey,
-        trade.exitFactor,
-        exitPrice
+        transaction.tradeKey,
+        transaction.buyOrderKey,
+        transaction.sellOrderKey,
+        so
       );
-      resolve(updatedTrade);
+      resolve(true);
     } catch (e) {
       console.log("calcLiquidation Error: ", e);
       reject(e);
@@ -200,12 +248,13 @@ exports.calculateLiquidation = function(
   });
 };
 
-exports.calculateLiquidationEthers = function(
+exports.processLiquidationEthers = function(
   pk,
   contractTitle,
   tradeKey,
-  exitFactor,
-  exitPrice
+  buyOrderKey,
+  sellOrderKey,
+  sellOrder
 ) {
   return new Promise(async function(resolve, reject) {
     try {
@@ -216,7 +265,7 @@ exports.calculateLiquidationEthers = function(
         _id: ObjectId(tradeKey)
       }).exec();
       if (!trade) {
-        throw `calcLiquidationEthers Error: trade ${tradeKey} not found`;
+        throw `processLiquidationEthers Error: trade ${tradeKey} not found`;
       }
       var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
       var contract = etherParams.initialize(
@@ -224,71 +273,39 @@ exports.calculateLiquidationEthers = function(
         sk,
         futureContract.address
       );
-      var provider = etherParams.provider;
-      exitFactor = exitFactor * 1000000;
-      exitPrice = exitPrice * 100;
+      var provider = contract.provider;
 
-      var transaction = await contract.calculateLiquidation(
+      var transaction = await contract.deployed.processLiquidation(
         tradeKey.toString(),
-        exitFactor.toFixed(0),
-        exitPrice.toFixed(0)
+        buyOrderKey.toString(),
+        sellOrderKey.toString()
       );
-      console.log("calcLiquidationEthers transaction: ", transaction);
+      console.log("processLiquidationEthers transaction: ", transaction);
       var transaction = await provider.waitForTransaction(transaction.hash);
       var transactionReceipt = await provider.getTransactionReceipt(
         transaction.hash
       );
-      console.log("calcLiquidationEthers transacReceipt", transactionReceipt);
-      resolve(transactionReceipt);
-    } catch (e) {
-      console.log("calcLiquidationEthers Error: ", e);
-      reject(e);
-    }
-  });
-};
-
-exports.tradeWithdrawEthers = function(pk, contractTitle, tradeKey) {
-  return new Promise(async function(resolve, reject) {
-    try {
-      var futureContract = await ctrlFutureContract.findContractBd(
-        contractTitle
+      console.log(
+        "processLiquidationEthers transacReceipt",
+        transactionReceipt
       );
-      var trade = await Trade.findOne({
-        _id: ObjectId(tradeKey)
-      }).exec();
-      if (!trade) {
-        throw `tradeWithdrawEthers Error: trade ${tradeKey} not found`;
-      }
-      var sk = pk.indexOf("0x") === 0 ? pk : "0x" + pk;
-      var contract = etherParams.initialize(
-        compiledContract,
-        sk,
-        futureContract.address
-      );
-      var provider = etherParams.provider;
-      var wallet = contract.signer;
-      trade.status = Trade.OrderStates.closed;
-      if (wallet.address.toLowerCase() == trade.buyerAddress.toLowerCase()) {
-        trade.buyerWithdraw = trade.buyerExitEtherAmount;
-        trade.buyerExitEtherAmount = 0;
-      }
-      if (wallet.address.toLowerCase() == trade.sellerAddress.toLowerCase()) {
-        trade.sellerWithdraw = trade.sellerExitEtherAmount;
-        trade.sellerExitEtherAmount = 0;
-      }
-      var transaction = await contract.tradeWithdraw(tradeKey.toString());
-      console.log("tradeWithdrawEthers transaction: ", transaction);
-      var transaction = await provider.waitForTransaction(transaction.hash);
-      var transactionReceipt = await provider.getTransactionReceipt(
-        transaction.hash
-      );
-      console.log("tradeWithdrawEthers transactionReceipt", transactionReceipt);
       if (transactionReceipt.status === 1) {
+        if (
+          sellOrder.sellerAddress.toLowerCase() ===
+          contract.wallet.address.toLowerCase()
+        ) {
+          trade.sellerWithdraw = trade.sellerExitEtherAmount;
+          trade.sellerExitEtherAmount = 0;
+        } else {
+          trade.buyerWithdraw = trade.buyerExitEtherAmount;
+          trade.buyerExitEtherAmount = 0;
+        }
+        trade.status = Trade.OrderStates.calculated;
         var updatedTrade = await trade.save();
       }
       resolve(transactionReceipt);
     } catch (e) {
-      console.log("tradeWithdrawEthers Error: ", e);
+      console.log("processLiquidationEthers Error: ", e);
       reject(e);
     }
   });

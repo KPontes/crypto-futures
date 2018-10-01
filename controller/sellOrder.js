@@ -77,13 +77,13 @@ exports.createSellOrderBlockchainEthers = function(
         sk,
         contractAddress
       );
-      const provider = etherParams.provider;
+      const provider = contract.provider;
       var wei = ethers.utils.parseEther(sellorder.depositedEther.toString());
       var weiBN = ethers.utils.bigNumberify(wei);
       var options = {
         value: weiBN
       };
-      var transaction = await contract.createOrder(
+      var transaction = await contract.deployed.createOrder(
         2,
         sellorder._id.toString(),
         sellorder.contractsAmount,
@@ -128,7 +128,7 @@ exports.getSellOrderEthers = function(key, contractTitle, pk) {
         depositedEther,
         fees,
         dealPrice
-      ] = await contract.getOrder(2, key); //sellOrder type=2
+      ] = await contract.deployed.getOrder(2, key); //sellOrder type=2
       so.seller = seller;
       so.contractsAmount = contractsAmount.toString(10);
       so.depositedEther = depositedEther.toString(10);

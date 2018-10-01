@@ -3,6 +3,8 @@ pragma solidity 0.4.24;
 import "./IFutureStorage.sol";
 
 contract FutureStorage is IFutureStorage {
+    event Print(string _name, uint _value);
+    event Print(string _name, bytes32 _value);
 
     enum State { Created, Settled, Closed }
 
@@ -32,13 +34,42 @@ contract FutureStorage is IFutureStorage {
         bytes32 sellOrderKey;
         uint sellerExitEtherAmount; //wei
         uint buyerExitEtherAmount; //wei
+        uint sellerWithdraw; //wei
+        uint buyerWithdraw; //wei
         uint exitPrice; //*100
+        uint exitFactor; //*1000000
         State status;
     }
 
     mapping(bytes32 => BuyOrder) private buyOrdersMap;
     mapping(bytes32 => SellOrder) private sellOrdersMap;
     mapping(bytes32 => Trade) private tradesMap;
+
+    // mapping(bytes32 => uint) private logUint;
+    // mapping(bytes32 => bytes32) private logByte;
+    // function devLog(string key, uint _value) public {
+    //     bytes32 keyByte = keccak256(bytes(key));
+    //     logUint[keyByte] = _value;
+    // }
+
+    // function devLog(string key, bytes32 _value) public {
+    //     bytes32 keyByte = keccak256(bytes(key));
+    //     logByte[keyByte] = _value;
+    // }
+
+    // function getLog(string key, uint _type) public view returns(uint, bytes32) {
+    //     bytes32 keyByte = keccak256(bytes(key));
+    //     if (_type == 1) {
+    //         return (logUint[keyByte], 0x123);
+    //     } else {
+    //         return (123, logByte[keyByte]);
+    //     }
+    // }
+
+
+    // function playground(uint a, uint b) public pure returns(uint) {
+    //     return 1000000 * a / b;
+    // }
 
     function createOrder(
       address sender,
@@ -122,7 +153,7 @@ contract FutureStorage is IFutureStorage {
         return (sellOrdersMap[keyByte].seller, sellOrdersMap[keyByte].contractsAmount, sellOrdersMap[keyByte].depositedEther, sellOrdersMap[keyByte].fees, sellOrdersMap[keyByte].dealPrice);
     }
 
-    function createTrade(bytes32 tradeKey, bytes32 buyOrderKey, bytes32 sellOrderKey) public {
+    function createTrade(bytes32 tradeKey, bytes32 buyOrderKey, bytes32 sellOrderKey) private {
 
         require(buyOrdersMap[buyOrderKey].depositedEther > 0, "Must have a buy order created");
         require(sellOrdersMap[sellOrderKey].depositedEther > 0, "Must have a sell order created");
@@ -135,36 +166,47 @@ contract FutureStorage is IFutureStorage {
             sellOrderKey: sellOrderKey,
             sellerExitEtherAmount: 1,
             buyerExitEtherAmount: 1,
+            sellerWithdraw: 0,
+            buyerWithdraw: 0,
             exitPrice: 0,
+            exitFactor: 0,
             status: State.Created
         });
 
         tradesMap[tradeKey] = newTrade;
     }
 
-    function getTrade(string key) public view returns(uint, uint, uint, uint) {
+    function getTrade(string key) public view returns(uint, uint, uint, uint, uint, uint, uint) {
         bytes32 keyByte = keccak256(bytes(key));
         return (
+          tradesMap[keyByte].buyerWithdraw,
+          tradesMap[keyByte].sellerWithdraw,
           tradesMap[keyByte].buyerExitEtherAmount,
           tradesMap[keyByte].sellerExitEtherAmount,
           tradesMap[keyByte].exitPrice,
+          tradesMap[keyByte].exitFactor,
           uint(tradesMap[keyByte].status));
     }
 
-   function calculateLiquidation(bytes32 tradeKey, uint exitFactor, uint exitPrice) public {
+   function processLiquidation(bytes32 tradeByte, bytes32 buyByte, bytes32 sellByte, uint exitPrice) public {
+        if (tradesMap[tradeByte].sellOrderKey != sellByte) {
+            //trade not created yet
+            //devLog("sellOrderKey2", sellByte);
+            createTrade(tradeByte, buyByte, sellByte);
 
-        Trade storage trade = tradesMap[tradeKey];
-        SellOrder memory so = sellOrdersMap[trade.sellOrderKey];
+            Trade storage trade = tradesMap[tradeByte];
+            SellOrder memory so = sellOrdersMap[sellByte];
 
-        // require(trade.status != State.Settled, "Settlement calculations already done");
-        require(trade.status != State.Closed, "Trade already closed");
-        require(so.contractsAmount > 0, "Invalid trade key");
-
-        //considering exitFactor is * 1000000) ex. 855555
-        trade.sellerExitEtherAmount = (so.depositedEther * exitFactor / 1000000) - so.fees;
-        trade.buyerExitEtherAmount = (so.depositedEther * (2000000 - exitFactor) / 1000000) - so.fees;
-        trade.exitPrice = exitPrice;
-        trade.status = State.Settled;
+            require(trade.status != State.Closed, "Trade already closed");
+            require(so.contractsAmount > 0, "Invalid trade key");
+            uint exitFactor = 1000000 * so.dealPrice / exitPrice; //considering exitFactor is * 1000000) ex. 855555
+            trade.exitFactor = exitFactor;
+            trade.sellerExitEtherAmount = (so.depositedEther * exitFactor / 1000000) - so.fees;
+            trade.buyerExitEtherAmount = (so.depositedEther * (2000000 - exitFactor) / 1000000) - so.fees;
+            trade.sellerWithdraw = trade.sellerExitEtherAmount;
+            trade.buyerWithdraw = trade.buyerExitEtherAmount;
+            trade.exitPrice = exitPrice;
+        }
     }
 
     function tradeWithdraw(bytes32 tradeKey, address sender) public view returns (bool, uint) {
@@ -181,12 +223,14 @@ contract FutureStorage is IFutureStorage {
 
         require(buyOrder.buyer == sender || sellOrder.seller == sender, "Invalid requester or no trade created");
         require(trade.status != State.Closed, "Trade already closed");
-        require(trade.status == State.Settled, "Settlement calculations not done yet");
+        if (exitEtherAmount == 0) {
+            revert(); //optional test, avoid trying to send zero ether to requester
+        }
 
         return (isBuyer, exitEtherAmount);
     }
 
-    function setTradeWithdraw(bytes32 tradeKey, bool isBuyer, uint exitEtherAmount) public {
+    function setTradeWithdrawValues(bytes32 tradeKey, bool isBuyer, uint exitEtherAmount) public {
         Trade storage trade = tradesMap[tradeKey];
 
         if (isBuyer) {

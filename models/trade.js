@@ -57,7 +57,7 @@ var TradeSchema = new mongoose.Schema(
       required: true
     },
     exitPrice: { type: Number, default: 0, required: true },
-    exitFactor: { type: Number, default: 1, required: true },
+    exitFactor: { type: Number, default: 0, required: true },
     sellerExitEtherAmount: { type: Number, default: 1, required: true },
     buyerExitEtherAmount: { type: Number, default: 1, required: true },
     sellerWithdraw: { type: Number, default: 0, required: true },

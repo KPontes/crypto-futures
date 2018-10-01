@@ -25,6 +25,16 @@ var FutureContractSchema = new mongoose.Schema(
       type: Number,
       required: true
     },
+    allowWithdraw: {
+      type: Boolean,
+      required: true,
+      default: false
+    },
+    lastPrice: {
+      type: Number,
+      required: true,
+      default: 0
+    },
     manager: {
       type: String,
       required: true,

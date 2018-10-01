@@ -1,0 +1,14 @@
+{
+  "test": {
+    "PORT": 5000,
+    "MONGODB_URI": "mongodb://localhost:27017/FuturesTest",
+    "JWT_SECRET": "myTestKey123",
+    "NETWORK": "rinkeby"
+  },
+  "development": {
+    "API_PORT": 5000,
+    "API_URI": "localhost:5000",
+    "SOCKETIO_PORT": 8000,
+    "NETWORK": "rinkeby"
+  }
+}
