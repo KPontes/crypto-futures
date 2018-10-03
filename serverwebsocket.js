@@ -19,7 +19,7 @@ io.on("connection", client => {
 function getTradingData() {
   return new Promise(async function(resolve, reject) {
     try {
-      const trades = await Trade.find({ status: { $ne: "dbOnly" } })
+      const trades = await Trade.find({ status: { $ne: "fail" } })
         .sort({ createdAt: -1 })
         .limit(20)
         .exec();

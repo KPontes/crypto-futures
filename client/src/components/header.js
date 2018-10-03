@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import MenuWallet from "./menu-wallet";
+import MenuFutures from "./menu-futures";
 
 const Header = props => {
   var importantMessage = "";
@@ -27,17 +28,6 @@ const Header = props => {
           </Link>
         </li>
         <li className="nav-item">
-          <Link
-            to="/trade"
-            id="trade"
-            className={
-              props.activeMenuItem === "trade" ? "nav-link active" : "nav-link"
-            }
-          >
-            Trade
-          </Link>
-        </li>
-        <li className="nav-item">
           <MenuWallet
             btnFormat={
               props.activeMenuItem === "wallet"
@@ -46,7 +36,15 @@ const Header = props => {
             }
           />
         </li>
-
+        <li className="nav-item">
+          <MenuFutures
+            btnFormat={
+              props.activeMenuItem === "futures"
+                ? "btn btn-primary"
+                : "btn btn-link"
+            }
+          />
+        </li>
         <li className="nav-item">
           <Link
             to="/contact"

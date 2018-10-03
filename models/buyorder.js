@@ -4,7 +4,7 @@ const OrderStates = Object.freeze({
   dbOnly: "dbOnly",
   open: "open",
   closed: "closed",
-  deleted: "deleted"
+  fail: "fail"
 });
 
 var BuyOrderSchema = new mongoose.Schema(
@@ -62,6 +62,10 @@ var BuyOrderSchema = new mongoose.Schema(
       required: true
     },
     sk: {
+      type: String,
+      default: ""
+    },
+    thash: {
       type: String,
       default: ""
     }

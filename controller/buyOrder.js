@@ -100,10 +100,11 @@ exports.createBuyOrderBlockchainEthers = function(
         transaction.hash
       );
       console.log("createBuyOrder transactionReceipt", transactionReceipt);
-      if (transactionReceipt.status === 1) {
-        buyorder.status = BuyOrder.OrderStates.open;
-        var updatedBO = await buyorder.save();
-      }
+      transactionReceipt.status === 1
+        ? (buyorder.status = BuyOrder.OrderStates.open)
+        : (buyorder.status = BuyOrder.OrderStates.fail);
+      buyorder.thash = transaction.hash;
+      var updatedBO = await buyorder.save();
       resolve(transactionReceipt);
     } catch (e) {
       console.log("createBuyOrder Error: ", e);

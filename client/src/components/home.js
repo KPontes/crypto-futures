@@ -36,11 +36,16 @@ class Home extends Component {
           <div className="col-md-9">
             <BrowserDetection>{browserHandler}</BrowserDetection>
             <div className="home-div">
-              This is Simple Pay Wallet (SPW), designed to be safe, straight
-              forward and user friendly. This wallet provides just a browser
-              front-end interface, empowering you to make transactions on the
-              Ethereum blockchain network. SPW does not save passwords nor
-              private keys into any backend server.
+              This is a derivatives platform for Ethereum Futures Trading based
+              on Smart Contracts.
+              <p>
+                Although ETH price always compares to USD, this is a crypto-in /
+                crypto-out platform, where you bid and withdraw only ETH.{" "}
+              </p>
+              <p>
+                Designed to be safe and user friendly, yet allowing up to 10x
+                leverage. Sign-up for free and give it a shot!!!
+              </p>
             </div>
           </div>
           <div className="col-md-3">
@@ -50,7 +55,7 @@ class Home extends Component {
         <div className="row">
           <div className="col-md-12">
             <div align="center">
-              <img src="/images/SPW.jpg" alt="" />
+              <img src="/images/how-works.jpg" alt="" />
             </div>
             <p />
             <ControlledCarrousel slides={slides} />

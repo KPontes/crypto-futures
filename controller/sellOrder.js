@@ -97,10 +97,11 @@ exports.createSellOrderBlockchainEthers = function(
         transaction.hash
       );
       console.log("createSellOrder transactionReceipt", transactionReceipt);
-      if (transactionReceipt.status === 1) {
-        sellorder.status = SellOrder.OrderStates.open;
-        var updatedBO = await sellorder.save();
-      }
+      transactionReceipt.status === 1
+        ? (sellorder.status = SellOrder.OrderStates.open)
+        : (sellorder.status = SellOrder.OrderStates.fail);
+      sellorder.thash = transaction.hash;
+      var updatedSO = await sellorder.save();
       resolve(transactionReceipt);
     } catch (e) {
       console.log("createSellOrder Error: ", e);

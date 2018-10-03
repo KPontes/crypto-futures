@@ -6,7 +6,7 @@ const OrderStates = Object.freeze({
   open: "open",
   calculated: "calculated",
   closed: "closed",
-  deleted: "deleted"
+  fail: "fail"
 });
 
 var TradeSchema = new mongoose.Schema(

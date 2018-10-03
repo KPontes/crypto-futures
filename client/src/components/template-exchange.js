@@ -8,7 +8,7 @@ class TemplateExchange extends Component {
   render() {
     return (
       <div className="container-fluid">
-        <Header activeMenuItem={"trade"} />
+        <Header activeMenuItem={"futures"} />
         <Exchange />
         <Footer />
       </div>

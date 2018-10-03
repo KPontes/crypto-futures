@@ -19,14 +19,14 @@ const SellOrder = props => {
     const arrData = props.exchangeObj.sellorder;
     listItems = arrData.map(element => {
       return (
-        <div>
+        <div style={{ fontSize: "small" }}>
           <div className="w-50 text-danger" style={{ display: "inline-block" }}>
             {" "}
-            {element.dealPrice}{" "}
+            {Number(element.dealPrice).toFixed(2)}{" "}
           </div>
           <div className="w-50 text-danger" style={{ display: "inline-block" }}>
             {" "}
-            {element.contractsDealed}{" "}
+            {element.contractsAmount}{" "}
           </div>
         </div>
       );
