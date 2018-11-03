@@ -266,7 +266,7 @@ app.post("/balance", async (req, res) => {
   }
 });
 
-var fp = new FutureParams(30000);
+var fp = new FutureParams(5000); //30000
 app.post("/execfutureparams", async (req, res) => {
   try {
     //contractTitle AO INVÉS DE PARÂMETRO, DEVE SER ITERADO NO BD

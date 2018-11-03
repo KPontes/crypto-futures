@@ -4,6 +4,7 @@ const axios = require("axios");
 var { mongoose } = require("../db/mongoose.js");
 var { FutureContract } = require("../models/futurecontract.js");
 const compiledContract = require("../ethereum/build/FutureContract.json");
+const trade = require("./trade.js");
 
 ("use strict");
 
@@ -29,6 +30,7 @@ FutureParams.prototype.executePooling = async function(contractTitle) {
           stop();
         }
         var result = await _this.setEtherValue(fc);
+        var result = await trade.monitorLiquidation(fc.title);
         //_this.stopExecute = false;
         if (result !== "OK") {
           _this.stopExecute = true;

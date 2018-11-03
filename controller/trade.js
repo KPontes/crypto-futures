@@ -3,6 +3,7 @@ const ethers = require("ethers");
 const { mongoose } = require("../db/mongoose.js");
 var ObjectId = require("mongoose").Types.ObjectId;
 const { SellOrder } = require("../models/sellorder.js");
+const { BuyOrder } = require("../models/buyorder.js");
 const { Transaction } = require("../models/transaction.js");
 const { Trade } = require("../models/trade.js");
 const { FutureContract } = require("../models/futurecontract.js");
@@ -199,6 +200,7 @@ exports.setLiqPriceEthers = function(
 
 exports.processLiquidation = function(pk, contractTitle, tradeKey) {
   return new Promise(async function(resolve, reject) {
+    //calculate liquidaton values and withdraw results for pk on blockchain
     try {
       var futureContract = await ctrlFutureContract.findContractBd(
         contractTitle
@@ -218,20 +220,19 @@ exports.processLiquidation = function(pk, contractTitle, tradeKey) {
       const so = await SellOrder.findOne({
         _id: ObjectId(transaction.sellOrderKey)
       });
-      if (trade.exitFactor === 0) {
-        //save calculations only once
-        trade.status = Trade.OrderStates.calculated;
-        trade.exitFactor = trade.dealPrice / futureContract.lastPrice;
-        trade.exitPrice = futureContract.lastPrice;
-        trade.sellerExitEtherAmount =
-          so.depositedEther * trade.exitFactor - so.fees;
-        trade.buyerExitEtherAmount =
-          (2 - trade.exitFactor) * so.depositedEther - so.fees;
+      const bo = await BuyOrder.findOne({
+        _id: ObjectId(transaction.buyOrderKey)
+      });
+      if (
+        trade.status !== Trade.OrderStates.calculated &&
+        trade.status !== Trade.OrderStates.closed
+      ) {
+        //guarantee save calculation with last contract price
+        await calculateLiquidation(fc, trade, bo, so);
         trade.status = Trade.OrderStates.calculated;
         var updatedTrade = await trade.save();
       }
-
-      //save Blockchain
+      //save on Blockchain
       await _this.processLiquidationEthers(
         pk,
         contractTitle,
@@ -310,3 +311,69 @@ exports.processLiquidationEthers = function(
     }
   });
 };
+
+exports.monitorLiquidation = function(contractTitle) {
+  return new Promise(async function(resolve, reject) {
+    //calculate liquidaton values and withdrawresults for pk on blockchain
+    try {
+      var fc = await ctrlFutureContract.findContractBd(contractTitle);
+      var trades = await Trade.find({
+        contractAddress: fc.address,
+        status: { $ne: Trade.OrderStates.closed }
+      }).exec();
+      if (!trades) {
+        throw `monitorLiquidation Error: trades not found`;
+      }
+      if (fc.lastPrice === 0) {
+        throw `monitorLiquidation Error: liquidation price not set`;
+      }
+      for (let trade of trades) {
+        const transaction = await Transaction.findOne({
+          tradeKey: ObjectId(trade._id)
+        });
+        const so = await SellOrder.findOne({
+          _id: ObjectId(transaction.sellOrderKey)
+        });
+        const bo = await BuyOrder.findOne({
+          _id: ObjectId(transaction.buyOrderKey)
+        });
+        if (!transaction) {
+          continue;
+        } else {
+          await calculateLiquidation(fc, trade, bo, so);
+        }
+      }
+      resolve("OK");
+    } catch (e) {
+      console.log("monitorLiquidation Error: ", e);
+      reject(e);
+    }
+  });
+};
+
+async function calculateLiquidation(fc, trade, bo, so) {
+  return new Promise(async function(resolve, reject) {
+    //calculate liquidaton values and withdrawresults for pk on blockchain
+    try {
+      if (
+        trade.status !== Trade.OrderStates.calculated &&
+        trade.status !== Trade.OrderStates.closed
+      ) {
+        //save calculations only on BD for queries purposes
+        trade.exitFactor = trade.dealPrice / fc.lastPrice;
+        trade.exitPrice = fc.lastPrice;
+        trade.sellerExitEtherAmount =
+          so.depositedEther * trade.exitFactor - so.fees;
+        trade.buyerExitEtherAmount =
+          (2 - trade.exitFactor) * so.depositedEther - so.fees;
+        console.log(trade);
+        var updatedTrade = await trade.save();
+        console.log(updatedTrade);
+      }
+      resolve(true);
+    } catch (e) {
+      console.log("calculateLiquidation Error: ", e);
+      reject(e);
+    }
+  });
+}
