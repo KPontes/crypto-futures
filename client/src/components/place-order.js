@@ -4,6 +4,8 @@ import { utils } from "ethers";
 import moment from "moment";
 import validator from "validator";
 
+import users from "../models/User";
+
 class PlaceOrder extends Component {
   constructor(props) {
     super(props);
@@ -11,27 +13,9 @@ class PlaceOrder extends Component {
     this.onInputChange = this.onInputChange.bind(this);
     this.onFormSubmit = this.onFormSubmit.bind(this);
     this.handleContractChange = this.handleContractChange.bind(this);
-    var users = [
-      {
-        address: "0x5fEDb99AAe7F1880A7a97b0cbe070231a6678f07",
-        pk: "0x54ebbbba420fa577d9a7be4e831d3ea540bcd9e455d83ade27956b52f28f1f52"
-      },
-      {
-        address: "0x3c511616bA2F6bD8Aa4e1e9Cdc20389dC6B6b107",
-        pk: "0x8f4149e18266e094b93069475de230f6a6f74fb2c9ecf044130aeaf90d400bb5"
-      },
-      {
-        address: "0x5fe2ef48cb0c519b495a68d99d3705cafb0757ff",
-        pk: "0xfbc8e1cb44f9505d93a6ae6215beed81a7be1eb9c6ce6e46fd520d747d9c84cb"
-      },
-      {
-        address: "0x85Be6c1f4DE7a2D1de9564086394700ccb7d0852",
-        pk: "0xfbc8e1cb44f9505d93a6ae6215beed81a7be1eb9c6ce6e46fd520d747d9c84cb"
-      }
-    ];
 
     this.state = {
-      users,
+      users: users.users,
       selectedOption: null,
       btnText: "Submit",
       thash: "",
@@ -103,6 +87,9 @@ class PlaceOrder extends Component {
     if (!this.state.selectedOption) {
       return alert("Select an order type");
     }
+    if (parseInt(this.state.margin) < 1 || parseInt(this.state.margin) > 5) {
+      return alert("Margin must be between 1 and 5");
+    }
 
     this.setState({ btnText: "Processing ...", isButtonDisabled: true });
 
@@ -116,6 +103,7 @@ class PlaceOrder extends Component {
         pk: user.pk,
         contractTitle: this.state.contract.title,
         contractsAmount: this.state.contractsAmount,
+        margin: this.state.margin,
         dealPrice: this.state.price,
         depositedEther: etherAmount.toString()
       };

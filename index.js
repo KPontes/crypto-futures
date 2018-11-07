@@ -18,6 +18,7 @@ const ctrlfc = require("./controller/ctrl-future-contract.js");
 const ctrlBuyOrder = require("./controller/buyOrder.js");
 const ctrlSellOrder = require("./controller/sellOrder.js");
 const ctrlTrade = require("./controller/trade.js");
+const ctrlHistory = require("./controller/history.js");
 //const ctrlTest = require("./controller/testFunctions.js"); //const web3 = require("./ethereum/web3.js");
 
 const app = express();
@@ -54,7 +55,7 @@ if (process.env.NODE_ENV === "production") {
 
 app.post("/createcontract", async (req, res) => {
   try {
-    const result = await ctrlfc.createFuture(
+    var result = await ctrlfc.createFuture(
       req.body.pk,
       req.body.title,
       req.body.size,
@@ -76,18 +77,6 @@ app.post("/savebyfabric", async (req, res) => {
     res.status(400).send(e); //refer to httpstatuses.com
   }
 });
-app.post("/savedirect", async (req, res) => {
-  try {
-    const result = await ctrlfc.saveDirect(
-      req.body.pk,
-      req.body.contractAddress
-    );
-    res.status(200).send(result);
-  } catch (e) {
-    console.log("Error: ", e);
-    res.status(400).send(e); //refer to httpstatuses.com
-  }
-});
 
 app.post("/newbuyorder", async (req, res) => {
   try {
@@ -96,7 +85,7 @@ app.post("/newbuyorder", async (req, res) => {
       req.body.pk,
       req.body.contractTitle,
       req.body.contractsAmount,
-      1,
+      req.body.margin,
       req.body.dealPrice,
       req.body.depositedEther
     );
@@ -128,7 +117,7 @@ app.post("/newsellorder", async (req, res) => {
       req.body.pk,
       req.body.contractTitle,
       req.body.contractsAmount,
-      1,
+      req.body.margin,
       req.body.dealPrice,
       req.body.depositedEther
     );
@@ -177,6 +166,19 @@ app.post("/listtrades", async (req, res) => {
   }
 });
 
+app.post("/orderhistory", async (req, res) => {
+  try {
+    const result = await ctrlHistory.orders(
+      req.body.contractTitle,
+      req.body.userAddress
+    );
+    res.status(200).send(result);
+  } catch (e) {
+    console.log("Error: ", e);
+    res.status(400).send(e);
+  }
+});
+
 app.post("/listcontracts", async (req, res) => {
   try {
     const result = await ctrlfc.findContractBd(req.body.contractTitle);
@@ -202,36 +204,9 @@ app.post("/setliqprice", async (req, res) => {
   }
 });
 
-app.post("/estimateliquidation", async (req, res) => {
-  try {
-    const result = await ctrlTrade.estimateLiquidation(
-      req.body.contractTitle,
-      req.body.tradeKey
-    );
-    res.status(200).send(result);
-  } catch (e) {
-    console.log("Error: ", e);
-    res.status(400).send(e); //refer to httpstatuses.com
-  }
-});
-
 app.post("/processliquidation", async (req, res) => {
   try {
     const result = await ctrlTrade.processLiquidation(
-      req.body.pk,
-      req.body.contractTitle,
-      req.body.tradeKey
-    );
-    res.status(200).send(result);
-  } catch (e) {
-    console.log("Error: ", e);
-    res.status(400).send(e); //refer to httpstatuses.com
-  }
-});
-
-app.post("/tradewithdraw", async (req, res) => {
-  try {
-    const result = await ctrlTrade.tradeWithdrawEthers(
       req.body.pk,
       req.body.contractTitle,
       req.body.tradeKey
@@ -267,7 +242,7 @@ app.post("/balance", async (req, res) => {
 });
 
 var fp = new FutureParams(5000); //30000
-app.post("/execfutureparams", async (req, res) => {
+app.post("/contractmonitoring", async (req, res) => {
   try {
     //contractTitle AO INVÉS DE PARÂMETRO, DEVE SER ITERADO NO BD
     //var result = await fp.executeOnce(
@@ -297,6 +272,33 @@ app.listen(port, () => {
 });
 
 module.exports = { app };
+
+// app.post("/savedirect", async (req, res) => {
+//   try {
+//     const result = await ctrlfc.saveDirect(
+//       req.body.pk,
+//       req.body.contractAddress
+//     );
+//     res.status(200).send(result);
+//   } catch (e) {
+//     console.log("Error: ", e);
+//     res.status(400).send(e); //refer to httpstatuses.com
+//   }
+// });
+
+// app.post("/tradewithdraw", async (req, res) => {
+//   try {
+//     const result = await ctrlTrade.tradeWithdrawEthers(
+//       req.body.pk,
+//       req.body.contractTitle,
+//       req.body.tradeKey
+//     );
+//     res.status(200).send(result);
+//   } catch (e) {
+//     console.log("Error: ", e);
+//     res.status(400).send(e); //refer to httpstatuses.com
+//   }
+// });
 
 // app.post("/testfunction", async (req, res) => {
 //   try {

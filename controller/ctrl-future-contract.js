@@ -56,7 +56,7 @@ exports.createFuture = function(pk, title, size, endDate) {
         fStorageAddress
       );
       console.log("createFuture", result);
-      resolve("Future contract created");
+      resolve("OK");
     } catch (e) {
       console.log("createFuture Error: ", e);
       reject(e);

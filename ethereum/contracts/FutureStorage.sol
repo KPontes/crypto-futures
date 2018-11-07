@@ -44,9 +44,10 @@ contract FutureStorage is IFutureStorage {
     mapping(bytes32 => BuyOrder) private buyOrdersMap;
     mapping(bytes32 => SellOrder) private sellOrdersMap;
     mapping(bytes32 => Trade) private tradesMap;
-
+    //
     // mapping(bytes32 => uint) private logUint;
     // mapping(bytes32 => bytes32) private logByte;
+
     // function devLog(string key, uint _value) public {
     //     bytes32 keyByte = keccak256(bytes(key));
     //     logUint[keyByte] = _value;
@@ -65,7 +66,6 @@ contract FutureStorage is IFutureStorage {
     //         return (123, logByte[keyByte]);
     //     }
     // }
-
 
     // function playground(uint a, uint b) public pure returns(uint) {
     //     return 1000000 * a / b;
@@ -189,22 +189,42 @@ contract FutureStorage is IFutureStorage {
     }
 
    function processLiquidation(bytes32 tradeByte, bytes32 buyByte, bytes32 sellByte, uint exitPrice) public {
+        //trade must be created and performed calculations only ONCE
         if (tradesMap[tradeByte].sellOrderKey != sellByte) {
-            //trade not created yet
-            //devLog("sellOrderKey2", sellByte);
+            //devLog("sellByte", sellByte);
             createTrade(tradeByte, buyByte, sellByte);
-
             Trade storage trade = tradesMap[tradeByte];
             SellOrder memory so = sellOrdersMap[sellByte];
-
-            require(trade.status != State.Closed, "Trade already closed");
-            require(so.contractsAmount > 0, "Invalid trade key");
-            uint exitFactor = 1000000 * so.dealPrice / exitPrice; //considering exitFactor is * 1000000) ex. 855555
-            trade.exitFactor = exitFactor;
-            trade.sellerExitEtherAmount = (so.depositedEther * exitFactor / 1000000) - so.fees;
-            trade.buyerExitEtherAmount = (so.depositedEther * (2000000 - exitFactor) / 1000000) - so.fees;
-            trade.sellerWithdraw = trade.sellerExitEtherAmount;
+            BuyOrder memory bo = buyOrdersMap[buyByte];
+            require(so.contractsAmount > 0 && bo.contractsAmount > 0  , "Invalid trade key");
+            uint diffPrice;
+            uint totalValue;
+            uint totalDiff;
+            uint diffDivLastPrice;
+            if (exitPrice > so.dealPrice) {
+                diffPrice  = exitPrice- so.dealPrice;
+                totalValue = bo.margin * bo.depositedEther;
+                totalDiff = diffPrice * totalValue;
+                diffDivLastPrice = 1000000 * (totalDiff / exitPrice);
+                trade.buyerExitEtherAmount = diffDivLastPrice / 1000000 + bo.depositedEther - bo.fees;
+                trade.sellerExitEtherAmount = bo.depositedEther + so.depositedEther - trade.buyerExitEtherAmount - so.fees - bo.fees;
+            } else {
+                diffPrice  = so.dealPrice - exitPrice;
+                totalValue = so.margin * so.depositedEther;
+                diffPrice = so.dealPrice - exitPrice;
+                totalDiff = diffPrice * totalValue;
+                diffDivLastPrice = 1000000 * (totalDiff / exitPrice);
+                trade.sellerExitEtherAmount = diffDivLastPrice / 1000000 + so.depositedEther - so.fees;
+                trade.buyerExitEtherAmount = bo.depositedEther + so.depositedEther - trade.sellerExitEtherAmount - so.fees - bo.fees;
+            }
+            if (trade.buyerExitEtherAmount + trade.sellerExitEtherAmount > bo.depositedEther + so.depositedEther) {
+                //treat calc error situation
+                trade.buyerExitEtherAmount = bo.depositedEther - bo.fees;
+                trade.sellerExitEtherAmount = so.depositedEther - so.fees;
+            }
+            trade.exitFactor = 1000000 * trade.sellerExitEtherAmount / (bo.depositedEther + so.depositedEther);
             trade.buyerWithdraw = trade.buyerExitEtherAmount;
+            trade.sellerWithdraw = trade.sellerExitEtherAmount;
             trade.exitPrice = exitPrice;
         }
     }

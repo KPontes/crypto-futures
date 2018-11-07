@@ -3,7 +3,7 @@ pragma solidity 0.4.24;
 import "./IFutureStorage.sol";
 
 //import "browser/IFutureContract.sol";
-//"ETHK18", "100000000000000000", "1635587200",  "0xec5bee2dbb67da8757091ad3d9526ba3ed2e2137"
+//"ETHK18", "1000000000000000000", "1835587200",  "0xbbf289d846208c16edc8474705c748aff07732db"
 
 contract FutureContract  {
 
@@ -81,14 +81,18 @@ contract FutureContract  {
         return FS.getTrade(key);
     }
 
-    function processLiquidation(string tradeKey, string buyOrderKey, string sellOrderKey) public {
+    function processLiquidation(string tradeKey, string buyOrderKey, string sellOrderKey, uint currPrice) public {
         //uncomment for PRD
         //require(contractParams.endDate <= now, "Wait for expiration date");
-        require(contractParams.lastPrice > 0 && contractParams.allowWithdraw, "Need to set mature price");
+        // continue only if tradeKey in LiquidatedTradeMapping
+        // or contractParams.allowWithdraw
+        if (contractParams.lastPrice > 0) {
+            currPrice = contractParams.lastPrice;
+        }
         bytes32 tradeByte = keccak256(bytes(tradeKey));
         bytes32 buyByte = keccak256(bytes(buyOrderKey));
         bytes32 sellByte = keccak256(bytes(sellOrderKey));
-        FS.processLiquidation(tradeByte, buyByte, sellByte, contractParams.lastPrice);
+        FS.processLiquidation(tradeByte, buyByte, sellByte, currPrice);
         tradeWithdraw(tradeByte, msg.sender);
     }
 

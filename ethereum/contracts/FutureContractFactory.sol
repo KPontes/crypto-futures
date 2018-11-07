@@ -1,6 +1,7 @@
 pragma solidity 0.4.24;
 
 import "./FutureContract.sol";
+//"ETHK18", "1000000000000000000", "1835587200",  "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a"
 
 contract FutureContractFactory {
 

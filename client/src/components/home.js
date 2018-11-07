@@ -69,7 +69,7 @@ class Home extends Component {
     return (
       <div>
         Before Send or Receive ether, you need to Create a Wallet, by providing
-        a personal password. This enable SPW to generate an Ethereum public
+        a personal password. This enable the app to generate an Ethereum public
         address and private key. Print your keys information and save your your
         keys file in a safe storage. You will need your public address to access
         your balance, and to receive funds. Analogously, you will need the

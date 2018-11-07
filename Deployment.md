@@ -1,6 +1,10 @@
 DEVELOPMENT
-$ node ./ethereum/compile.js
+$ node ./ethereum/compile-multi-sol.js
+$ node ./ethereum/deploy-ethers-Storage.js
+=> get hash and enter on etherscan to obtain contract address
+=> save on config at key "F_STORAGE_ADDRESS"
 $ node ./ethereum/deploy-ethers-Fabric.js
-Get transaction hash on console and verify on https://rinkeby.etherscan.io
-Save factory address on config.json
-call createcontract endpoint for creating future contract
+=> get hash and enter on etherscan to obtain contract address
+=> save on config at key "FACTORY_ADDRESS"
+Create contract: on Postman call localhost:5000/createcontract
+Save contract on DB: on Postman call localhost:5000/savebyfabric

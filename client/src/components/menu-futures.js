@@ -50,14 +50,8 @@ class MenuFutures extends Component {
             <Link to="/trade" id="trade" className="nav-link">
               Trading
             </Link>
-            <Link to="/history" id="history" className="nav-link">
+            <Link to="/myorders" id="myorders" className="nav-link">
               My Orders
-            </Link>
-            <Link to="/withdraw" id="Withdraw" className="nav-link">
-              Withdraw
-            </Link>
-            <Link to="/withdraw" id="Withdraw" className="nav-link">
-              Open Contracts
             </Link>
           </div>
         ) : null}

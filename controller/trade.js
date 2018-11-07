@@ -1,4 +1,5 @@
 require("../config/config.js");
+//const _ = require("lodash");
 const ethers = require("ethers");
 const { mongoose } = require("../db/mongoose.js");
 var ObjectId = require("mongoose").Types.ObjectId;
@@ -230,6 +231,7 @@ exports.processLiquidation = function(pk, contractTitle, tradeKey) {
         //guarantee save calculation with last contract price
         await calculateLiquidation(fc, trade, bo, so);
         trade.status = Trade.OrderStates.calculated;
+        trade.liquidate = true;
         var updatedTrade = await trade.save();
       }
       //save on Blockchain
@@ -302,6 +304,12 @@ exports.processLiquidationEthers = function(
           trade.buyerExitEtherAmount = 0;
         }
         trade.status = Trade.OrderStates.calculated;
+        if (
+          trade.buyerExitEtherAmount === 0 &&
+          trade.sellerExitEtherAmount === 0
+        ) {
+          trade.status = Trade.OrderStates.closed;
+        }
         var updatedTrade = await trade.save();
       }
       resolve(transactionReceipt);
@@ -357,18 +365,47 @@ async function calculateLiquidation(fc, trade, bo, so) {
     try {
       if (
         trade.status !== Trade.OrderStates.calculated &&
-        trade.status !== Trade.OrderStates.closed
+        trade.status !== Trade.OrderStates.closed &&
+        !trade.liquidate
       ) {
         //save calculations only on BD for queries purposes
-        trade.exitFactor = trade.dealPrice / fc.lastPrice;
-        trade.exitPrice = fc.lastPrice;
+        const totalValueSeller = so.margin * so.depositedEther;
+        const diffPriceSeller = trade.dealPrice - fc.lastPrice;
+        const totalDiffSeller = diffPriceSeller * totalValueSeller;
+        const diffDivLastPrice = totalDiffSeller / fc.lastPrice;
         trade.sellerExitEtherAmount =
-          so.depositedEther * trade.exitFactor - so.fees;
+          diffDivLastPrice + so.depositedEther - so.fees;
         trade.buyerExitEtherAmount =
-          (2 - trade.exitFactor) * so.depositedEther - so.fees;
-        console.log(trade);
+          bo.depositedEther +
+          so.depositedEther -
+          trade.sellerExitEtherAmount -
+          so.fees -
+          bo.fees;
+        if (trade.sellerExitEtherAmount < 0) {
+          trade.liquidate = true;
+          trade.sellerExitEtherAmount = 0;
+          trade.buyerExitEtherAmount =
+            bo.depositedEther + so.depositedEther - bo.fees;
+        }
+        if (trade.buyerExitEtherAmount < 0) {
+          trade.liquidate = true;
+          trade.buyerExitEtherAmount = 0;
+          trade.sellerExitEtherAmount =
+            bo.depositedEther + so.depositedEther - so.fees;
+        }
+        if (
+          trade.buyerExitEtherAmount === trade.etherAmount * 0.1 ||
+          trade.sellerExitEtherAmount === trade.etherAmount * 0.1
+        ) {
+          //future feature is create a call for margin
+          trade.liquidate = true;
+        }
+        trade.exitPrice = fc.lastPrice;
+        trade.exitFactor =
+          trade.sellerExitEtherAmount / (bo.depositedEther + so.depositedEther);
+
         var updatedTrade = await trade.save();
-        console.log(updatedTrade);
+        //console.log("calculateLiquidation", updatedTrade);
       }
       resolve(true);
     } catch (e) {

@@ -45,6 +45,7 @@ exports.createDb = function(
         tradeKey: null,
         contractsAmount: contractsAmount,
         dealPrice: dealPrice,
+        margin: margin,
         depositedEther: parseFloat(etherValue),
         fees: fee,
         contractAddress: futureContract.address,
