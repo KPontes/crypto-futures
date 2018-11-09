@@ -9,6 +9,7 @@ import TemplateReceiveEther from "./template-receive-ether";
 import TemplateContact from "./template-contact";
 import TemplateExchange from "./template-exchange";
 import TemplateMyOrders from "./template-myorders";
+import TemplateWithdraw from "./template-withdraw";
 
 const Teste = () => <h2>SurveyNew</h2>;
 
@@ -21,6 +22,7 @@ export default class App extends Component {
             <Route exact path="/" component={TemplateHome} />
             <Route exact path="/trade" component={TemplateExchange} />
             <Route exact path="/myorders" component={TemplateMyOrders} />
+            <Route exact path="/withdraw" component={TemplateWithdraw} />
             <Route exact path="/balance" component={TemplateBalance} />
             <Route path="/balance/:address" component={TemplateBalance} />
             <Route

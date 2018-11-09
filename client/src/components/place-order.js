@@ -4,7 +4,7 @@ import { utils } from "ethers";
 import moment from "moment";
 import validator from "validator";
 
-import users from "../models/User";
+import User from "../models/User";
 
 class PlaceOrder extends Component {
   constructor(props) {
@@ -13,9 +13,9 @@ class PlaceOrder extends Component {
     this.onInputChange = this.onInputChange.bind(this);
     this.onFormSubmit = this.onFormSubmit.bind(this);
     this.handleContractChange = this.handleContractChange.bind(this);
-
+    const users = new User();
     this.state = {
-      users: users.users,
+      users: users.getUsers(),
       selectedOption: null,
       btnText: "Submit",
       thash: "",

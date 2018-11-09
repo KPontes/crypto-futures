@@ -26,23 +26,23 @@ class MyOrders extends Component {
     return (
       <div className="container bg-inverse text-white">
         <div className="row">
-          <div className="col-sm-3" align="left">
+          <div className="col-md-3" align="left">
             <SelectOrders sendData={this.getData} />
           </div>
-          <div className="col-sm-9">
+          <div className="col-md-9">
             <div className="row">
-              <div className="col-sm-3" align="center">
+              <div className="col-md-3" align="center">
                 <BuyOrder exchangeObj={this.state.exchangeObj} />
                 <SellOrder exchangeObj={this.state.exchangeObj} />
               </div>
-              <div className="col-sm-3" align="center">
+              <div className="col-md-3" align="center">
                 <BuyOrderDetail exchangeObj={this.state.exchangeObj} />
                 <SellOrderDetail exchangeObj={this.state.exchangeObj} />
               </div>
-              <div className="col-sm-2" align="center">
+              <div className="col-md-2" align="center">
                 <Trades exchangeObj={this.state.exchangeObj} />
               </div>
-              <div className="col-sm-4" align="center">
+              <div className="col-md-4" align="center">
                 <TradesDetail exchangeObj={this.state.exchangeObj} />
               </div>
             </div>

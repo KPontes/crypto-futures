@@ -3,7 +3,7 @@ import axios from "axios";
 import { utils } from "ethers";
 import moment from "moment";
 
-import users from "../models/User";
+import User from "../models/User";
 
 class SelectOrders extends Component {
   constructor(props) {
@@ -12,8 +12,9 @@ class SelectOrders extends Component {
     this.onFormSubmit = this.onFormSubmit.bind(this);
     this.handleContractChange = this.handleContractChange.bind(this);
 
+    var users = new User();
     this.state = {
-      users: users.users,
+      users: users.getUsers(),
       btnText: "Submit",
       isButtonDisabled: true,
       contract: {}
@@ -21,6 +22,7 @@ class SelectOrders extends Component {
   }
 
   async componentWillMount() {
+    // load available contracts into state
     var _this = this;
     axios({
       method: "post",

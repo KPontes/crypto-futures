@@ -1,93 +1,149 @@
 import React, { Component } from "react";
+import { Link } from "react-router-dom";
 import moment from "moment";
 import _ from "lodash";
 
 class TradesDetail extends Component {
   constructor(props) {
     super(props);
-    this.handleBtnClick = this.handleBtnClick.bind(this);
     this.state = {
-      exchangeObj: this.props.exchangeObj
+      isButtonDisabled: false,
+      btnWithdraw: "Withdraw"
     };
   }
 
   render() {
     var partial = <div />;
-    if (this.props.exchangeObj.trades) {
+    if (this.props.exchangeObj.transactions) {
       partial = this.partialListItems();
     }
     return partial;
   }
 
-  partialListItems() {
-    let listItems;
-    let header = "";
-    header = (
-      <div>
-        <div>details</div>
-        <div className="row">
-          <div className="col" style={{ display: "inline-block" }}>
+  partialHeader() {
+    return (
+      <div className="text-muted" style={{ fontSize: "small" }}>
+        -
+        <div className="row" style={{ fontSize: "small" }}>
+          <div
+            className="col-md-6 text-white"
+            align="center"
+            style={{ display: "inline-block" }}
+          >
             date
           </div>
-          <div className="col" style={{ display: "inline-block" }}>
+          <div
+            className="col-md-6 text-white"
+            align="center"
+            style={{ display: "inline-block" }}
+          >
             withdraw
           </div>
         </div>
       </div>
     );
-    const arrData = this.props.exchangeObj.trades;
-    const fc = this.props.exchangeObj.futureContract;
-    const address = this.props.exchangeObj.userAddress;
-    listItems = arrData.map(element => {
-      let value = element.sellerExitEtherAmount;
-      if (address === element.buyerAddress) {
-        value = _.round(element.buyerExitEtherAmount, 10);
+  }
+
+  partialListItems() {
+    const header = this.partialHeader();
+    var transactions;
+    if (this.props.exchangeObj.transactions && !transactions) {
+      transactions = this.props.exchangeObj.transactions;
+      var trades = this.props.exchangeObj.trades;
+      var buyOrders = this.props.exchangeObj.buyorders;
+      var sellOrders = this.props.exchangeObj.sellorders;
+      var fc = this.props.exchangeObj.futureContract;
+      var address = this.props.exchangeObj.userAddress;
+    } else {
+      return header;
+    }
+
+    var listItems = [];
+    var transaction;
+    for (let element of trades) {
+      transaction = transactions.find(tr => tr.tradeKey === element._id);
+      if (!transaction) {
+        break;
       }
-      if (element.liquidate || fc.allowWithdraw) {
-        value = (
-          <div className="col-sm-12" align="right">
-            <button
-              type="button"
-              ref="btn"
-              className="btn btn-outline-secondary btn-sm"
-              onClick={event => this.handleBtnClick()}
-            >
-              {value}
-            </button>
-          </div>
-        );
-      }
-      return (
+      const withdrawValue = this.calcWithdrawValue(
+        element,
+        transaction,
+        address,
+        buyOrders,
+        sellOrders,
+        fc
+      );
+      listItems.push(
         <div className="row" style={{ fontSize: "small" }}>
-          <div className="col" style={{ display: "inline-block" }}>
+          <div
+            className="col-md-6"
+            align="center"
+            style={{ display: "inline-block" }}
+          >
             {" "}
             {moment(Date.parse(element.createdAt)).format(
-              "YY-MM-DD kk:mm:ss"
+              "YY-MM-DD kk:mm"
             )}{" "}
           </div>
-          <div className="col" style={{ display: "inline-block" }}>
-            {" "}
-            {value}{" "}
+          <div
+            className="col-md-6"
+            align="center"
+            style={{ display: "inline-block" }}
+          >
+            {withdrawValue}
           </div>
         </div>
       );
-    });
+    }
+
     return [header, listItems];
   }
 
-  async handleBtnClick(event) {
-    try {
-      console.log("Cliquei");
-      this.setState({ errorMessage: "", btSend: "Loading ..." });
-
-      this.setState({ btSend: "Send Transaction" });
-    } catch (e) {
-      this.setState({
-        btSend: "Send Transaction",
-        errorMessage: "Error: " + e.message
-      });
+  calcWithdrawValue(element, transaction, address, buyOrders, sellOrders, fc) {
+    let withdrawValue;
+    let buyorder;
+    let sellorder;
+    var withdrawed = false;
+    if (address === element.buyerAddress) {
+      withdrawValue = <div>{_.round(element.buyerExitEtherAmount, 10)}</div>;
+      buyorder = buyOrders.find(bo => bo._id === transaction.buyOrderKey);
+      element.buyerWithdraw === 0
+        ? (withdrawed = false)
+        : ((withdrawed = true),
+          (withdrawValue = (
+            <div className="btn-outline-warning">
+              {_.round(element.buyerWithdraw, 10)}
+            </div>
+          )));
     }
+    if (address === element.sellerAddress) {
+      withdrawValue = <div>{_.round(element.sellerExitEtherAmount, 10)}</div>;
+      sellorder = sellOrders.find(so => so._id === transaction.sellOrderKey);
+      element.sellerWithdraw === 0
+        ? (withdrawed = false)
+        : ((withdrawed = true),
+          (withdrawValue = (
+            <div className="btn-outline-warning">
+              {_.round(element.sellerWithdraw, 10)}
+            </div>
+          )));
+    }
+
+    if ((element.liquidate || fc.allowWithdraw) && !withdrawed) {
+      withdrawValue = (
+        <Link
+          className="btn-outline-secondary cursor-pointer"
+          align="center"
+          to={{
+            pathname: "/withdraw",
+            state: { trade: element, address, buyorder, sellorder, fc }
+          }}
+        >
+          {withdrawValue}
+        </Link>
+      );
+    }
+    return withdrawValue;
   }
 }
-
 export default TradesDetail;

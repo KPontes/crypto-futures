@@ -9,3 +9,6 @@ Next Sprint
 * Option unlock wallet and add user to Redux
 * At createContract, listen for result and if status = 1, call savebyfabric.
 * Monitor for orphan orders dbOnly after xx time and mark as failed
+* ProcessLiquidation: Rollback trade to previous state on DB when fail on Blockchain
+* Trade screen to show trades only after contract selection
+* Allow sell position

@@ -4,27 +4,29 @@ const SellOrder = props => {
   //console.log("tradeObj", props.exchangeObj);
   let listItems;
   let header = "";
-  if (props.exchangeObj.sellorder && props.exchangeObj.sellorder.length > 0) {
+  if (props.exchangeObj.sellorders && props.exchangeObj.sellorders.length > 0) {
     header = (
-      <div>
-        <div className="w-50 text-danger">Sell Order</div>
-        <div className="w-25 text-danger" style={{ display: "inline-block" }}>
-          price
-        </div>
-        <div className="w-25 text-danger" style={{ display: "inline-block" }}>
-          volume
+      <div className="text-danger" style={{ fontSize: "small" }}>
+        Sell Orders
+        <div className="row" style={{ fontSize: "small" }}>
+          <div className="col text-danger" style={{ display: "inline-block" }}>
+            price
+          </div>
+          <div className="col text-danger" style={{ display: "inline-block" }}>
+            volume
+          </div>
         </div>
       </div>
     );
-    const arrData = props.exchangeObj.sellorder;
+    const arrData = props.exchangeObj.sellorders;
     listItems = arrData.map(element => {
       return (
-        <div style={{ fontSize: "small" }}>
-          <div className="w-25 text-danger" style={{ display: "inline-block" }}>
+        <div className="row" style={{ fontSize: "small" }}>
+          <div className="col text-danger" style={{ display: "inline-block" }}>
             {" "}
             {Number(element.dealPrice).toFixed(2)}{" "}
           </div>
-          <div className="w-25 text-danger" style={{ display: "inline-block" }}>
+          <div className="col text-danger" style={{ display: "inline-block" }}>
             {" "}
             {element.contractsAmount}{" "}
           </div>

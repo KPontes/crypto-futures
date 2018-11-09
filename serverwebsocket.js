@@ -24,17 +24,23 @@ function getTradingData() {
         .limit(20)
         .exec();
 
-      const buyorder = await BuyOrder.find({ status: { $ne: "dbOnly" } })
+      const buyorders = await BuyOrder.find({
+        status: { $ne: "dbOnly" },
+        tradeKey: null
+      })
         .sort({ createdAt: -1 })
         .limit(20)
         .exec();
 
-      const sellorder = await SellOrder.find({ status: { $ne: "dbOnly" } })
+      const sellorders = await SellOrder.find({
+        status: { $ne: "dbOnly" },
+        tradeKey: null
+      })
         .sort({ createdAt: -1 })
         .limit(20)
         .exec();
 
-      resolve({ trades, buyorder, sellorder });
+      resolve({ trades, buyorders, sellorders });
     } catch (e) {
       console.log("getTradingData Error: ", e);
       reject(e);

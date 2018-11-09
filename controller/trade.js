@@ -229,7 +229,7 @@ exports.processLiquidation = function(pk, contractTitle, tradeKey) {
         trade.status !== Trade.OrderStates.closed
       ) {
         //guarantee save calculation with last contract price
-        await calculateLiquidation(fc, trade, bo, so);
+        await calculateLiquidation(futureContract, trade, bo, so);
         trade.status = Trade.OrderStates.calculated;
         trade.liquidate = true;
         var updatedTrade = await trade.save();
@@ -281,7 +281,8 @@ exports.processLiquidationEthers = function(
       var transaction = await contract.deployed.processLiquidation(
         tradeKey.toString(),
         buyOrderKey.toString(),
-        sellOrderKey.toString()
+        sellOrderKey.toString(),
+        futureContract.lastPrice * 100
       );
       console.log("processLiquidationEthers transaction: ", transaction);
       var transaction = await provider.waitForTransaction(transaction.hash);

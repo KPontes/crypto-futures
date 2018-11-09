@@ -6,25 +6,27 @@ const Trades = props => {
   let header = "";
   if (props.exchangeObj.trades) {
     header = (
-      <div>
-        <div>Trade</div>
-        <div className="w-50" style={{ display: "inline-block" }}>
-          price
-        </div>
-        <div className="w-50" style={{ display: "inline-block" }}>
-          volume
+      <div style={{ fontSize: "small" }}>
+        Trades
+        <div className="row" style={{ fontSize: "small" }}>
+          <div className="col" style={{ display: "inline-block" }}>
+            price
+          </div>
+          <div className="col" style={{ display: "inline-block" }}>
+            volume
+          </div>
         </div>
       </div>
     );
     const arrData = props.exchangeObj.trades;
     listItems = arrData.map(element => {
       return (
-        <div style={{ fontSize: "small" }}>
-          <div className="w-50" style={{ display: "inline-block" }}>
+        <div className="row" style={{ fontSize: "small" }}>
+          <div className="col" style={{ display: "inline-block" }}>
             {" "}
             {Number(element.dealPrice).toFixed(2)}{" "}
           </div>
-          <div className="w-50" style={{ display: "inline-block" }}>
+          <div className="col" style={{ display: "inline-block" }}>
             {" "}
             {element.contractsAmount}{" "}
           </div>

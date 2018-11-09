@@ -1,9 +1,11 @@
 require("../config/config.js");
 
 const { mongoose } = require("../db/mongoose.js");
+var ObjectId = require("mongoose").Types.ObjectId;
 const { SellOrder } = require("../models/sellorder.js");
 const { BuyOrder } = require("../models/buyorder.js");
 const { Trade } = require("../models/trade.js");
+const { Transaction } = require("../models/transaction.js");
 const ctrlFutureContract = require("./ctrl-future-contract.js");
 
 exports.orders = function(contractTitle, userAddress) {
@@ -23,7 +25,7 @@ exports.orders = function(contractTitle, userAddress) {
         .limit(20)
         .exec();
 
-      const buyorder = await BuyOrder.find({
+      const buyorders = await BuyOrder.find({
         status: { $ne: "dbOnly" },
         contractAddress: fc.address,
         buyerAddress: userAddress
@@ -32,7 +34,7 @@ exports.orders = function(contractTitle, userAddress) {
         .limit(20)
         .exec();
 
-      const sellorder = await SellOrder.find({
+      const sellorders = await SellOrder.find({
         status: { $ne: "dbOnly" },
         contractAddress: fc.address,
         sellerAddress: userAddress
@@ -40,10 +42,39 @@ exports.orders = function(contractTitle, userAddress) {
         .sort({ createdAt: -1 })
         .limit(20)
         .exec();
-      resolve({ trades, buyorder, sellorder, userAddress, futureContract: fc });
+
+      const transactions = await getTransactions(trades);
+
+      console.log("history transactions", transactions);
+      resolve({
+        trades,
+        buyorders,
+        sellorders,
+        transactions,
+        userAddress,
+        futureContract: fc
+      });
     } catch (e) {
       console.log("Order history Error: ", e);
       reject(e);
     }
   });
 };
+
+function getTransactions(trades) {
+  return new Promise(async function(resolve, reject) {
+    try {
+      var transactions = [];
+      for (let trade of trades) {
+        var tr = await Transaction.findOne({
+          tradeKey: ObjectId(trade._id)
+        }).exec();
+        transactions.push(tr);
+      }
+      resolve(transactions);
+    } catch (e) {
+      console.log("getTransaction Error: ", e);
+      reject(e);
+    }
+  });
+}
