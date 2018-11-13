@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 
-import Header from "./header";
-import Footer from "./footer";
-import Exchange from "./exchange";
+import Header from "../header";
+import Footer from "../footer";
+import Exchange from "../../containers/exchange";
 
 class TemplateExchange extends Component {
   render() {

@@ -3,18 +3,15 @@ import axios from "axios";
 import { utils } from "ethers";
 import moment from "moment";
 
-import User from "../models/User";
+//import User from "../models/User";
 
 class SelectOrders extends Component {
   constructor(props) {
     super(props);
-    this.onInputChange = this.onInputChange.bind(this);
     this.onFormSubmit = this.onFormSubmit.bind(this);
     this.handleContractChange = this.handleContractChange.bind(this);
 
-    var users = new User();
     this.state = {
-      users: users.getUsers(),
       btnText: "Submit",
       isButtonDisabled: true,
       contract: {}
@@ -41,12 +38,6 @@ class SelectOrders extends Component {
       });
   }
 
-  onInputChange(event) {
-    this.setState({
-      [event.target.id]: event.target.value.trim()
-    });
-  }
-
   handleContractChange(changeEvent) {
     function selectedContract(element) {
       return element.title === changeEvent.target.value;
@@ -62,11 +53,9 @@ class SelectOrders extends Component {
 
   async onFormSubmit(event) {
     event.preventDefault();
-    const user = this.state.users.find(
-      item => item.address === this.state.walletAddress
-    );
+    const user = this.props.user;
     if (!user) {
-      return alert("Invalid address");
+      return alert("Please unlock a wallet");
     }
     this.setState({ btnText: "Processing ...", isButtonDisabled: true });
 
@@ -74,7 +63,7 @@ class SelectOrders extends Component {
       var _this = this;
       var data = {
         contractTitle: this.state.contract.title,
-        userAddress: this.state.walletAddress
+        userAddress: user.address.toLowerCase()
       };
       // ****************
       axios({
@@ -105,24 +94,33 @@ class SelectOrders extends Component {
   }
 
   render() {
-    const inputUser = this.inputUser();
-    const selectContract = this.selectContract();
-
-    return (
-      <form onSubmit={this.onFormSubmit}>
-        {selectContract}
-        {inputUser}
-        <span className="input-group-btn btn-margin">
-          <button
-            type="submit"
-            className="btn btn-primary btn-sm"
-            disabled={this.state.isButtonDisabled}
-          >
-            {this.state.btnText}
-          </button>
-        </span>
-      </form>
-    );
+    if (this.props.user) {
+      const displayUser = this.displayUser();
+      const selectContract = this.selectContract();
+      return (
+        <form onSubmit={this.onFormSubmit}>
+          {selectContract}
+          {displayUser}
+          <span className="input-group-btn btn-margin">
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              disabled={this.state.isButtonDisabled}
+            >
+              {this.state.btnText}
+            </button>
+          </span>
+        </form>
+      );
+    } else {
+      return (
+        <div className="row">
+          <div className="col-sm-12 text-warning">
+            <label>==> Please unlock a wallet</label>
+          </div>
+        </div>
+      );
+    }
   }
 
   selectContract() {
@@ -175,20 +173,14 @@ class SelectOrders extends Component {
     return result;
   }
 
-  inputUser() {
+  displayUser() {
     return (
       <div className="form-group">
         <div className="row">
           <div className="col-sm-12">
-            <small>Logged user address</small>
-            <input
-              type="text"
-              className="form-control"
-              id="walletAddress"
-              placeholder="wallet address"
-              value={this.state.walletAddress}
-              onChange={this.onInputChange}
-            />
+            <small>Logged user address:</small>
+            <br />
+            <small>{this.props.user.address}</small>
           </div>
         </div>
       </div>

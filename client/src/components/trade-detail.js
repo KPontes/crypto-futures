@@ -46,7 +46,7 @@ class TradesDetail extends Component {
 
   partialListItems() {
     const header = this.partialHeader();
-    var transactions;
+    var transactions; //at this point is undefined
     if (this.props.exchangeObj.transactions && !transactions) {
       transactions = this.props.exchangeObj.transactions;
       var trades = this.props.exchangeObj.trades;
@@ -73,6 +73,7 @@ class TradesDetail extends Component {
         sellOrders,
         fc
       );
+      console.log("withdrawValue", withdrawValue);
       listItems.push(
         <div className="row" style={{ fontSize: "small" }}>
           <div
@@ -100,11 +101,14 @@ class TradesDetail extends Component {
   }
 
   calcWithdrawValue(element, transaction, address, buyOrders, sellOrders, fc) {
-    let withdrawValue;
+    let withdrawValue = <div> 0 </div>;
     let buyorder;
     let sellorder;
     var withdrawed = false;
-    if (address === element.buyerAddress) {
+    if (
+      address.toString().toLowerCase() ===
+      element.buyerAddress.toString().toLowerCase()
+    ) {
       withdrawValue = <div>{_.round(element.buyerExitEtherAmount, 10)}</div>;
       buyorder = buyOrders.find(bo => bo._id === transaction.buyOrderKey);
       element.buyerWithdraw === 0
@@ -116,7 +120,10 @@ class TradesDetail extends Component {
             </div>
           )));
     }
-    if (address === element.sellerAddress) {
+    if (
+      address.toString().toLowerCase() ===
+      element.sellerAddress.toString().toLowerCase()
+    ) {
       withdrawValue = <div>{_.round(element.sellerExitEtherAmount, 10)}</div>;
       sellorder = sellOrders.find(so => so._id === transaction.sellOrderKey);
       element.sellerWithdraw === 0

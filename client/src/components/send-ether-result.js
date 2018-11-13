@@ -48,7 +48,9 @@ class SendEtherResult extends Component {
             </Link>
             <p>
               <a
-                href={`https://etherscan.io/tx/${this.props.transaction.hash}`}
+                href={`${process.env.REACT_APP_ETHERSCAN}${
+                  this.props.transaction.hash
+                }`}
                 target="_blank"
               >
                 Click for Transaction monitoring

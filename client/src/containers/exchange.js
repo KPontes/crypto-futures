@@ -1,9 +1,11 @@
 import React, { Component } from "react";
-import { subscribeToTrades } from "./clientwebsocket";
-import Trades from "./trade";
-import BuyOrder from "./buyorder";
-import SellOrder from "./sellorder";
-import PlaceOrder from "./place-order";
+import { connect } from "react-redux";
+import { subscribeToTrades } from "../components/clientwebsocket";
+
+import Trades from "../components/trade";
+import BuyOrder from "../components/buyorder";
+import SellOrder from "../components/sellorder";
+import PlaceOrder from "../components/place-order";
 
 class Exchange extends Component {
   constructor(props) {
@@ -24,7 +26,7 @@ class Exchange extends Component {
       <div className="container bg-inverse text-white">
         <div className="row">
           <div className="col-sm-4" align="left">
-            <PlaceOrder />
+            <PlaceOrder user={this.props.user} />
           </div>
           <div className="col-sm-8">
             <div className="row">
@@ -45,7 +47,16 @@ class Exchange extends Component {
   }
 }
 
-export default Exchange;
+function mapStateToProps(state) {
+  //whatever is returned will show up as props inside this container
+  return {
+    user: state.activeUser
+  };
+}
+
+export default connect(mapStateToProps)(Exchange);
+
+//export default Exchange;
 
 //Mockup data
 // var trade = [];

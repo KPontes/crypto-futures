@@ -1,15 +1,16 @@
 import React, { Component } from "react";
 import { BrowserRouter, Route } from "react-router-dom";
 // import dotenv from "dotenv";
-import TemplateHome from "./template-home";
-import TemplateBalance from "./template-balance";
-import TemplateCreateWallet from "./template-create-wallet";
-import TemplateSendEther from "./template-send-ether";
-import TemplateReceiveEther from "./template-receive-ether";
-import TemplateContact from "./template-contact";
-import TemplateExchange from "./template-exchange";
-import TemplateMyOrders from "./template-myorders";
-import TemplateWithdraw from "./template-withdraw";
+import TemplateHome from "./templates/template-home";
+import TemplateBalance from "./templates/template-balance";
+import TemplateCreateWallet from "./templates/template-create-wallet";
+import TemplateSendEther from "./templates/template-send-ether";
+import TemplateUnlock from "./templates/template-unlock";
+import TemplateReceiveEther from "./templates/template-receive-ether";
+import TemplateContact from "./templates/template-contact";
+import TemplateExchange from "./templates/template-exchange";
+import TemplateMyOrders from "./templates/template-myorders";
+import TemplateWithdraw from "./templates/template-withdraw";
 
 const Teste = () => <h2>SurveyNew</h2>;
 
@@ -31,6 +32,7 @@ export default class App extends Component {
               component={TemplateCreateWallet}
             />
             <Route path="/sendether" component={TemplateSendEther} />
+            <Route path="/unlock" component={TemplateUnlock} />
             <Route path="/receiveether" component={TemplateReceiveEther} />
             <Route path="/contact" component={TemplateContact} />
             <Route path="/teste" component={Teste} />

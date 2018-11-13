@@ -4,7 +4,7 @@ import { utils } from "ethers";
 import moment from "moment";
 import validator from "validator";
 
-import User from "../models/User";
+//import User from "../models/User";
 
 class PlaceOrder extends Component {
   constructor(props) {
@@ -13,9 +13,7 @@ class PlaceOrder extends Component {
     this.onInputChange = this.onInputChange.bind(this);
     this.onFormSubmit = this.onFormSubmit.bind(this);
     this.handleContractChange = this.handleContractChange.bind(this);
-    const users = new User();
     this.state = {
-      users: users.getUsers(),
       selectedOption: null,
       btnText: "Submit",
       thash: "",
@@ -71,18 +69,14 @@ class PlaceOrder extends Component {
 
   async onFormSubmit(event) {
     event.preventDefault();
-    const user = this.state.users.find(
-      item => item.address === this.state.walletAddress
-    );
-
     if (
       !validator.isDecimal(this.state.contractsAmount) ||
       !validator.isDecimal(this.state.price)
     ) {
       return alert("Invalid price or contracts volume");
     }
-    if (!user) {
-      return alert("Invalid address");
+    if (!this.props.user) {
+      return alert("Please unlock a wallet");
     }
     if (!this.state.selectedOption) {
       return alert("Select an order type");
@@ -100,7 +94,7 @@ class PlaceOrder extends Component {
       var _this = this;
       var url = "";
       var data = {
-        pk: user.pk,
+        pk: this.props.user.privateKey,
         contractTitle: this.state.contract.title,
         contractsAmount: this.state.contractsAmount,
         margin: this.state.margin,
@@ -109,10 +103,10 @@ class PlaceOrder extends Component {
       };
       if (this.state.selectedOption === "buy") {
         url = "/newbuyorder";
-        data.buyerAddress = user.address;
+        data.buyerAddress = this.props.user.address;
       } else {
         url = "/newsellorder";
-        data.sellerAddress = user.address;
+        data.sellerAddress = this.props.user.address;
       }
       // ****************
       axios({
@@ -152,42 +146,52 @@ class PlaceOrder extends Component {
   }
 
   render() {
-    const selectOrder = this.selectOrder();
-    const inputPrice = this.inputPrice();
-    const selectContract = this.selectContract();
+    if (this.props.user) {
+      const selectOrder = this.selectOrder();
+      const inputPrice = this.inputPrice();
+      const selectContract = this.selectContract();
 
-    const etherscan = () => {
-      if (this.state.thash) {
-        return (
-          <a
-            href={`${process.env.REACT_APP_ETHERSCAN}${this.state.thash}`}
-            target="_blank"
-          >
-            {" "}
-            Transaction hash{" "}
-          </a>
-        );
-      }
-    };
-    var etherscanLink = etherscan();
+      const etherscan = () => {
+        if (this.state.thash) {
+          return (
+            <a
+              href={`${process.env.REACT_APP_ETHERSCAN}${this.state.thash}`}
+              target="_blank"
+            >
+              {" "}
+              Transaction hash{" "}
+            </a>
+          );
+        }
+      };
+      var etherscanLink = etherscan();
 
-    return (
-      <form onSubmit={this.onFormSubmit}>
-        {selectContract}
-        {selectOrder}
-        {inputPrice}
-        <span className="input-group-btn btn-margin">
-          <button
-            type="submit"
-            className="btn btn-primary btn-sm"
-            disabled={this.state.isButtonDisabled}
-          >
-            {this.state.btnText}
-          </button>
-        </span>
-        <div align="center">{etherscanLink}</div>
-      </form>
-    );
+      return (
+        <form onSubmit={this.onFormSubmit}>
+          {selectContract}
+          {selectOrder}
+          {inputPrice}
+          <span className="input-group-btn btn-margin">
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              disabled={this.state.isButtonDisabled}
+            >
+              {this.state.btnText}
+            </button>
+          </span>
+          <div align="center">{etherscanLink}</div>
+        </form>
+      );
+    } else {
+      return (
+        <div className="row">
+          <div className="col-sm-12 text-warning">
+            <label>==> Please unlock a wallet</label>
+          </div>
+        </div>
+      );
+    }
   }
 
   selectContract() {
@@ -312,15 +316,9 @@ class PlaceOrder extends Component {
           </div>
         </div>
         <div className="col-sm-12">
-          <small>Logged user address</small>
-          <input
-            type="text"
-            className="form-control"
-            id="walletAddress"
-            placeholder="wallet address"
-            value={this.state.walletAddress}
-            onChange={this.onInputChange}
-          />
+          <small>Logged user address:</small>
+          <br />
+          <small>{this.props.user.address}</small>
         </div>
       </div>
     );

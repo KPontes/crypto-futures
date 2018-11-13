@@ -1,11 +1,13 @@
 import React, { Component } from "react";
-import Trades from "./trade";
-import TradesDetail from "./trade-detail";
-import BuyOrder from "./buyorder";
-import BuyOrderDetail from "./buyorder-detail";
-import SellOrder from "./sellorder";
-import SellOrderDetail from "./sellorder-detail";
-import SelectOrders from "./select-orders";
+import { connect } from "react-redux";
+
+import Trades from "../components/trade";
+import TradesDetail from "../components/trade-detail";
+import BuyOrder from "../components/buyorder";
+import BuyOrderDetail from "../components/buyorder-detail";
+import SellOrder from "../components/sellorder";
+import SellOrderDetail from "../components/sellorder-detail";
+import SelectOrders from "../components/select-orders";
 
 class MyOrders extends Component {
   constructor(props) {
@@ -17,6 +19,7 @@ class MyOrders extends Component {
   }
 
   getData(val) {
+    //receive data from child component
     this.setState({
       exchangeObj: val.data
     });
@@ -27,7 +30,7 @@ class MyOrders extends Component {
       <div className="container bg-inverse text-white">
         <div className="row">
           <div className="col-md-3" align="left">
-            <SelectOrders sendData={this.getData} />
+            <SelectOrders sendData={this.getData} user={this.props.user} />
           </div>
           <div className="col-md-9">
             <div className="row">
@@ -53,21 +56,12 @@ class MyOrders extends Component {
   }
 }
 
-export default MyOrders;
+function mapStateToProps(state) {
+  //whatever is returned will show up as props inside myorders container
+  return {
+    user: state.activeUser
+  };
+}
 
-//Mockup data
-// var trade = [];
-// trade[0] = {
-//   dealPrice: 200,
-//   etherAmount: 2
-// };
-// trade[1] = {
-//   dealPrice: 300,
-//   etherAmount: 3
-// };
-// this.state = {
-//   //tradeObj: "Init"
-//   tradeObj: {
-//     trades: trade
-//   }
-// };
+//promote myOrders from a component to a container with added props activeUser
+export default connect(mapStateToProps)(MyOrders);

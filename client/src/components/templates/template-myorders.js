@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 
-import Header from "./header";
-import Footer from "./footer";
-import MyOrders from "./myorders";
+import Header from "../header";
+import Footer from "../footer";
+import MyOrders from "../../containers/myorders";
 
 class TemplateMyOrders extends Component {
   render() {

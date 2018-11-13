@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 
-import Header from "./header";
-import Footer from "./footer";
-import Home from "./home";
+import Header from "../header";
+import Footer from "../footer";
+import Home from "../home";
 
 class TemplateHome extends Component {
   render() {

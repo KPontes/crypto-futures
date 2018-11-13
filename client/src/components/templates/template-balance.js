@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 
-import Header from "./header";
-import Footer from "./footer";
-import Address from "./address";
+import Header from "../header";
+import Footer from "../footer";
+import Address from "../address";
 
 class TemplateBalance extends Component {
   render() {

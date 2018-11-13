@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 
-import Header from "./header";
-import Footer from "./footer";
-import SendEtherChoice from "./send-ether-choice";
+import Header from "../header";
+import Footer from "../footer";
+import SendEtherChoice from "../../containers/send-ether-choice";
 
 class TemplateSendEther extends Component {
   render() {

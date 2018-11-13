@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router-dom";
 
-class MenuFutures extends Component {
+class MenuContract extends Component {
   constructor(props) {
     super();
 
@@ -38,7 +38,7 @@ class MenuFutures extends Component {
           className={this.state.btnFormat}
         >
           {" "}
-          Futures
+          Contract admin
         </button>
         {this.state.showMenu ? (
           <div
@@ -47,14 +47,17 @@ class MenuFutures extends Component {
               this.dropdownMenu = element;
             }}
           >
-            <Link to="/unlock" id="trade" className="nav-link">
-              Unlock wallet
+            <Link to="/create" id="create" className="nav-link">
+              Create
             </Link>
-            <Link to="/trade" id="trade" className="nav-link">
-              Trading
+            <Link to="/monitor" id="monitor" className="nav-link">
+              start/stop Monitor
             </Link>
-            <Link to="/myorders" id="myorders" className="nav-link">
-              My Orders
+            <Link to="/close" id="close" className="nav-link">
+              Close
+            </Link>
+            <Link to="/close" id="close" className="nav-link">
+              Withdraw
             </Link>
           </div>
         ) : null}
@@ -63,4 +66,4 @@ class MenuFutures extends Component {
   }
 }
 
-export default MenuFutures;
+export default MenuContract;

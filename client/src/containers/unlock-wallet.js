@@ -1,11 +1,12 @@
 import React, { Component } from "react";
-//import _ from "lodash";
+import { connect } from "react-redux";
+import { bindActionCreators } from "redux";
+import { selectUser } from "../actions/root";
 import FileInput from "react-simple-file-input";
 
 import { viewAddressInfo } from "../utils/ethereum";
 import { decrypt } from "../utils/cipher";
-import SendEtherPanel from "./send-ether-panel";
-import Help from "./help";
+import Help from "../components/help";
 
 var allowedFileTypes = ["text/plain"]; //, "image/jpeg", "image/gif"];
 
@@ -19,7 +20,7 @@ function fileIsIncorrectFiletype(file) {
 }
 
 //Class component have props available everywhere and must be used when you need to keep state
-class SendEtherChoice extends Component {
+class UnlockWallet extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -34,23 +35,23 @@ class SendEtherChoice extends Component {
 
     this.state = {
       cancelButtonClicked: false,
+      msg: "",
       fileContents: "",
       password: "",
       pk_mnemonic: "",
       btPkMnemonic: "Click to Unlock",
-      selectedOption: "",
-      keysObj: {}
+      selectedOption: ""
     };
   }
 
   componentWillUnmount() {
     this.setState({
       cancelButtonClicked: false,
+      msg: "",
       fileContents: "",
       password: "",
       pk_mnemonic: "",
-      selectedOption: "",
-      keysObj: {}
+      selectedOption: ""
     });
   }
 
@@ -62,7 +63,9 @@ class SendEtherChoice extends Component {
     const getPkOrMnemonic = this.partialGetPkOrMnemonic();
     const unlockWithFile = this.partialUnlockEncryptedFile();
     const unlockWithPk = this.partialUnlockWithPkOrMnemonic();
-
+    const msg = this.state.msg.address
+      ? `Unlocked address: ${this.state.msg.address}`
+      : "";
     // if (!_.isEmpty(this.state.keysObj)) {
     //   const unlockWithEncryptedFile = this.partialUnlockEncryptedFile();
     // }
@@ -75,7 +78,7 @@ class SendEtherChoice extends Component {
         {unlockWithFile}
         {getPkOrMnemonic}
         {unlockWithPk}
-        <SendEtherPanel keysObj={this.state.keysObj} />
+        <div className="col-sm-12"> {msg}</div>
       </div>
     );
   }
@@ -159,15 +162,13 @@ class SendEtherChoice extends Component {
     }
     try {
       keysObj = await viewAddressInfo(keysObj);
+      this.props.selectUser(keysObj);
       this.refs.btn.removeAttribute("disabled");
       this.setState({
-        keysObj: keysObj
+        msg: this.props.user
       });
     } catch (e) {
       this.refs.btn.removeAttribute("disabled");
-      this.setState({
-        keysObj: {}
-      });
       alert("Error unlocking wallet: " + e.message);
     }
     this.setState({
@@ -214,7 +215,7 @@ class SendEtherChoice extends Component {
       var plainText = decrypt(cipher, this.state.password);
       var keysObj = JSON.parse(plainText);
       keysObj = await viewAddressInfo(keysObj);
-      this.setState({ keysObj: keysObj });
+      this.props.selectUser(keysObj);
     } catch (e) {
       alert("Error: Invalid keys file - " + e.message);
     }
@@ -254,17 +255,12 @@ class SendEtherChoice extends Component {
         <p>
           Type in your password and you will be presented with three choices to
           unlock your wallet: (1) select your encrypted keys file (2) type or
-          paste your private key, and (3) type or paste your mnemonic recover
-          passphrase.
+          paste your private key (3) type your mnemonic passphrase.
         </p>
         <p>
           Once your wallet has been unlocked, you will be presented with your
-          balance in the Send Ether Panel, and there will be available the
-          inputs for typing the destination address and amount to be transfered.
-        </p>
-        <p>
-          A Result Panel will provide you a confirmation with the transaction
-          id.
+          balance in the Send Ether Panel and you will be able to withdraw ether
+          or go trading!
         </p>
       </div>
     );
@@ -321,9 +317,23 @@ class SendEtherChoice extends Component {
       fileContents: "",
       password: "",
       pk_mnemonic: "",
-      btPkMnemonic: "Click to Unlock",
-      keysObj: {}
+      btPkMnemonic: "Click to Unlock"
     });
   }
 }
-export default SendEtherChoice;
+
+function mapStateToProps(state) {
+  //whatever is returned will show as props inside this container
+  return {
+    user: state.activeUser
+  };
+}
+
+//anything returned from this function will become props on this container
+function mapDispatchToProps(dispatch) {
+  //whenever selectUser is called, the result will be passed to all reducers
+  return bindActionCreators({ selectUser: selectUser }, dispatch);
+}
+
+//promote UnlockWallet from a component to a container with added props activeUser
+export default connect(mapStateToProps, mapDispatchToProps)(UnlockWallet);

@@ -43,7 +43,7 @@ class Home extends Component {
                 crypto-out platform, where you bid and withdraw only ETH.{" "}
               </p>
               <p>
-                Designed to be safe and user friendly, yet allowing up to 10x
+                Designed to be safe and user friendly, yet allowing up to 5x
                 leverage. Sign-up for free and give it a shot!!!
               </p>
             </div>
@@ -73,23 +73,25 @@ class Home extends Component {
         address and private key. Print your keys information and save your your
         keys file in a safe storage. You will need your public address to access
         your balance, and to receive funds. Analogously, you will need the
-        private key to sign Send Ether transactions.
+        private key to sign withdraw and trading transactions
       </div>
     );
   }
   secondSlide() {
     return (
       <div>
-        The View Balance feature enable you to query a balance of the Ether
-        amount of your valid ethereum public address.
+        Futures menu allows you to go trading! Unlock a previously created
+        wallet and place buy / sell orders for a choosen future contract. Prices
+        refer to ETH/USD rate. My Orders menu is where you may find all your
+        placed orders and matched trades.
       </div>
     );
   }
   thirdSlide() {
     return (
       <div>
-        In order to Send Ether to other addresses, you will need to unlock your
-        wallet through one of the options: (1) type your password and select the
+        Withdraw to other addresses, also requires you to unlock your wallet
+        through one of the options: (1) type your password and select the
         encrypted keys file (2) type or paste your private key, or (3) type or
         paste your mnemonic recover passphrase.
         <br />
